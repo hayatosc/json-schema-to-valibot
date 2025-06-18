@@ -2,6 +2,8 @@
 
 Convert JSON Schema definitions to [Valibot](https://valibot.dev/) schema definitions.
 
+This is the Valibot equivalent of [json-schema-to-zod](https://www.npmjs.com/package/json-schema-to-zod) - a runtime package and CLI tool to convert JSON schema objects or files into Valibot schemas. The API and structure are heavily inspired by json-schema-to-zod.
+
 ## Installation
 
 ```bash
@@ -156,6 +158,10 @@ pnpm build
 # Development CLI
 pnpm dev -i example-schema.json
 ```
+
+## Credits
+
+This project is heavily inspired by and based on [json-schema-to-zod](https://www.npmjs.com/package/json-schema-to-zod). Many thanks to the original authors for their excellent work.
 
 ## License
 
