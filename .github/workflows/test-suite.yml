@@ -40,8 +40,14 @@ jobs:
     - name: Run linting
       run: pnpm lint
     
-    - name: Run unit tests
-      run: pnpm test
+    - name: Run unit tests (development mode)
+      run: pnpm test:dev
+    
+    - name: Build project
+      run: pnpm build
+    
+    - name: Run E2E tests
+      run: pnpm test:e2e
     
     - name: Run JSON Schema Test Suite
       id: test-suite
@@ -121,6 +127,14 @@ jobs:
           
           **${passRateColor} Overall Pass Rate: ${passRate}%**
           
+          ### Test Pipeline Results
+          ✅ Type checking passed  
+          ✅ Linting passed  
+          ✅ Unit tests passed  
+          ✅ Build completed  
+          ✅ E2E tests passed  
+          
+          ### JSON Schema Test Suite
           | Metric | Count | Percentage |
           |--------|-------|------------|
           | Total Tests | ${totalTests} | 100% |

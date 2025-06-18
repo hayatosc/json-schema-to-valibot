@@ -15,7 +15,9 @@
   "scripts": {
     "build": "rolldown --config rolldown.config.mjs && tsc --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsx src/cli.ts",
-    "test": "pnpm build && vitest",
+    "test": "pnpm test:dev && pnpm test:e2e && pnpm test:suite",
+    "test:dev": "vitest --exclude='**/end-to-end.test.ts'",
+    "test:e2e": "pnpm build && vitest end-to-end.test.ts",
     "test:suite": "pnpm build && tsx script/test-suite-runner.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
