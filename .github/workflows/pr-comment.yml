@@ -1,0 +1,156 @@
+name: PR Test Suite Comment
+
+on:
+  workflow_run:
+    workflows: ["JSON Schema Test Suite"]
+    types:
+      - completed
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.event == 'pull_request'
+    
+    steps:
+    - name: Download test results
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+             owner: context.repo.owner,
+             repo: context.repo.repo,
+             run_id: ${{ github.event.workflow_run.id }},
+          });
+          
+          const matchArtifact = artifacts.data.artifacts.filter((artifact) => {
+            return artifact.name == "test-suite-results"
+          })[0];
+          
+          if (!matchArtifact) {
+            console.log('No test suite results artifact found');
+            return;
+          }
+          
+          const download = await github.rest.actions.downloadArtifact({
+             owner: context.repo.owner,
+             repo: context.repo.repo,
+             artifact_id: matchArtifact.id,
+             archive_format: 'zip',
+          });
+          
+          const fs = require('fs');
+          fs.writeFileSync('${{ github.workspace }}/test-results.zip', Buffer.from(download.data));
+    
+    - name: Extract and parse results
+      id: parse-results
+      run: |
+        unzip test-results.zip
+        
+        if [ ! -f test-suite-output.txt ]; then
+          echo "No test suite output found"
+          exit 1
+        fi
+        
+        # Extract stats from structured CI output
+        TOTAL_TESTS=$(grep "TOTAL_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
+        PASSED_TESTS=$(grep "PASSED_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
+        FAILED_TESTS=$(grep "FAILED_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
+        ERROR_TESTS=$(grep "ERROR_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
+        PASS_RATE=$(grep "PASS_RATE=" test-suite-output.txt | cut -d'=' -f2 || echo "0.0")
+        
+        echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+        echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+        echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+        echo "error_tests=$ERROR_TESTS" >> $GITHUB_OUTPUT
+        echo "pass_rate=$PASS_RATE" >> $GITHUB_OUTPUT
+        
+        # Get workflow conclusion
+        CONCLUSION="${{ github.event.workflow_run.conclusion }}"
+        echo "workflow_conclusion=$CONCLUSION" >> $GITHUB_OUTPUT
+    
+    - name: Find PR number
+      id: pr
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: pullRequests } = await github.rest.pulls.list({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            head: '${{ github.event.workflow_run.head_branch }}',
+            state: 'open'
+          });
+          
+          if (pullRequests.length === 0) {
+            console.log('No open PR found for this branch');
+            return;
+          }
+          
+          const prNumber = pullRequests[0].number;
+          console.log(`Found PR #${prNumber}`);
+          core.setOutput('number', prNumber);
+    
+    - name: Comment on PR
+      if: steps.pr.outputs.number
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const prNumber = ${{ steps.pr.outputs.number }};
+          const passRate = '${{ steps.parse-results.outputs.pass_rate }}';
+          const totalTests = '${{ steps.parse-results.outputs.total_tests }}';
+          const passedTests = '${{ steps.parse-results.outputs.passed_tests }}';
+          const failedTests = '${{ steps.parse-results.outputs.failed_tests }}';
+          const errorTests = '${{ steps.parse-results.outputs.error_tests }}';
+          const conclusion = '${{ steps.parse-results.outputs.workflow_conclusion }}';
+          
+          const statusEmoji = conclusion === 'success' ? '✅' : '❌';
+          const passRateColor = parseFloat(passRate) >= 90 ? '🟢' : parseFloat(passRate) >= 70 ? '🟡' : '🔴';
+          
+          const comment = `## ${statusEmoji} JSON Schema Test Suite Results
+          
+          **${passRateColor} Overall Pass Rate: ${passRate}%**
+          
+          | Metric | Count | Percentage |
+          |--------|-------|------------|
+          | Total Tests | ${totalTests} | 100% |
+          | ✅ Passed | ${passedTests} | ${totalTests > 0 ? ((passedTests/totalTests) * 100).toFixed(1) : 0}% |
+          | ❌ Failed | ${failedTests} | ${totalTests > 0 ? ((failedTests/totalTests) * 100).toFixed(1) : 0}% |
+          | 🚨 Errors | ${errorTests} | ${totalTests > 0 ? ((errorTests/totalTests) * 100).toFixed(1) : 0}% |
+          
+          📊 [View detailed results in the workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})
+          
+          ${conclusion === 'success' ? '🎉 All checks passed!' : '⚠️ Some tests failed or encountered errors.'}
+          
+          ---
+          *This comment is automatically updated for each commit.*`;
+          
+          // Find existing PR comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: prNumber,
+          });
+          
+          const existingComment = comments.find(comment => 
+            comment.body.includes('JSON Schema Test Suite Results') && 
+            comment.user.login === 'github-actions[bot]'
+          );
+          
+          if (existingComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: comment
+            });
+            console.log(`Updated comment ${existingComment.id} on PR #${prNumber}`);
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });
+            console.log(`Created new comment on PR #${prNumber}`);
+          }

@@ -1,0 +1,85 @@
+name: JSON Schema Test Suite
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  test-suite:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 10.12.1
+    
+    - name: Install dependencies
+      run: pnpm install
+    
+    - name: Run type checking
+      run: pnpm typecheck
+    
+    - name: Run linting
+      run: pnpm lint
+    
+    - name: Run unit tests
+      run: pnpm test
+    
+    - name: Build project
+      run: pnpm build
+    
+    - name: Run JSON Schema Test Suite
+      id: test-suite
+      run: |
+        echo "Running JSON Schema Test Suite..."
+        pnpm test:suite > test-suite-output.txt 2>&1
+        cat test-suite-output.txt
+        
+        # Extract stats from structured CI output
+        TOTAL_TESTS=$(grep "TOTAL_TESTS=" test-suite-output.txt | cut -d'=' -f2)
+        PASSED_TESTS=$(grep "PASSED_TESTS=" test-suite-output.txt | cut -d'=' -f2)
+        FAILED_TESTS=$(grep "FAILED_TESTS=" test-suite-output.txt | cut -d'=' -f2)
+        ERROR_TESTS=$(grep "ERROR_TESTS=" test-suite-output.txt | cut -d'=' -f2)
+        PASS_RATE=$(grep "PASS_RATE=" test-suite-output.txt | cut -d'=' -f2)
+        
+        echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+        echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+        echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+        echo "error_tests=$ERROR_TESTS" >> $GITHUB_OUTPUT
+        echo "pass_rate=${PASS_RATE}%" >> $GITHUB_OUTPUT
+        
+        # Set exit code based on whether we have test results
+        if [ -z "$TOTAL_TESTS" ] || [ "$TOTAL_TESTS" = "0" ]; then
+          echo "❌ No test results found"
+          exit 1
+        fi
+      continue-on-error: true
+    
+    - name: Upload test suite output
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-suite-results
+        path: test-suite-output.txt
+    
+    - name: Set job status
+      run: |
+        TOTAL_TESTS="${{ steps.test-suite.outputs.total_tests }}"
+        if [ -z "$TOTAL_TESTS" ] || [ "$TOTAL_TESTS" = "0" ]; then
+          echo "❌ Test suite execution failed"
+          exit 1
+        else
+          echo "✅ Test suite completed with $TOTAL_TESTS tests"
+        fi

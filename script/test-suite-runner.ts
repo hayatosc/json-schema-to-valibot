@@ -209,28 +209,45 @@ class TestSuiteRunner {
       console.log(line);
     });
 
-    console.log(`\n📝 Detailed Test Results:`);
-    console.log('Category'.padEnd(15) + 'Schema'.padEnd(30) + 'Test'.padEnd(35) + 'Input'.padEnd(20) + 'Expected'.padEnd(9) + 'Actual'.padEnd(7) + 'Status');
-    console.log('-'.repeat(130));
+    // Only show detailed results for failed tests to reduce noise
+    const failedResults = this.results.filter(r => r.status === 'FAIL' || r.status === 'ERROR');
+    if (failedResults.length > 0) {
+      console.log(`\n❌ Failed Test Results (${failedResults.length} failures):`);
+      console.log('Category'.padEnd(15) + 'Schema'.padEnd(30) + 'Test'.padEnd(35) + 'Input'.padEnd(20) + 'Expected'.padEnd(9) + 'Actual'.padEnd(7) + 'Status');
+      console.log('-'.repeat(130));
 
-    this.results.forEach(result => {
-      const truncatedSchema = result.schema.length > 28 ? result.schema.substring(0, 25) + '...' : result.schema;
-      const truncatedTest = result.test.length > 33 ? result.test.substring(0, 30) + '...' : result.test;
-      const truncatedInput = result.input.length > 18 ? result.input.substring(0, 15) + '...' : result.input;
+      failedResults.slice(0, 50).forEach(result => { // Limit to first 50 failures
+        const truncatedSchema = result.schema.length > 28 ? result.schema.substring(0, 25) + '...' : result.schema;
+        const truncatedTest = result.test.length > 33 ? result.test.substring(0, 30) + '...' : result.test;
+        const truncatedInput = result.input.length > 18 ? result.input.substring(0, 15) + '...' : result.input;
+        
+        const line = result.category.padEnd(15) + 
+                     truncatedSchema.padEnd(30) + 
+                     truncatedTest.padEnd(35) + 
+                     truncatedInput.padEnd(20) + 
+                     result.expected.toString().padEnd(9) + 
+                     result.actual.toString().padEnd(7) + 
+                     result.status;
+        console.log(line);
+      });
       
-      const line = result.category.padEnd(15) + 
-                   truncatedSchema.padEnd(30) + 
-                   truncatedTest.padEnd(35) + 
-                   truncatedInput.padEnd(20) + 
-                   result.expected.toString().padEnd(9) + 
-                   result.actual.toString().padEnd(7) + 
-                   result.status;
-      console.log(line);
-    });
+      if (failedResults.length > 50) {
+        console.log(`... and ${failedResults.length - 50} more failures`);
+      }
+    }
 
     console.log('\n' + '='.repeat(80));
     console.log(`✅ Test completed. Overall pass rate: ${overallPassRate.toFixed(1)}%`);
     console.log('='.repeat(80));
+    
+    // Output structured data for CI parsing
+    console.log('\n--- CI_STATS ---');
+    console.log(`TOTAL_TESTS=${totalTests}`);
+    console.log(`PASSED_TESTS=${totalPassed}`);
+    console.log(`FAILED_TESTS=${totalFailed}`);
+    console.log(`ERROR_TESTS=${totalErrors}`);
+    console.log(`PASS_RATE=${overallPassRate.toFixed(1)}`);
+    console.log('--- END_CI_STATS ---');
   }
 }
 
