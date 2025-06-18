@@ -11,6 +11,10 @@ export default [
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module'
+      },
+      globals: {
+        console: 'readonly',
+        process: 'readonly'
       }
     },
     plugins: {
