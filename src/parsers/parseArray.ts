@@ -50,8 +50,8 @@ export function parseArray(schema: JsonSchema, context: ParserContext): ParseRes
   
   // Add unique items constraint
   if (schema.uniqueItems === true) {
-    constraints.push('v.unique()')
-    imports.add('unique')
+    constraints.push('v.custom((input) => Array.isArray(input) && new Set(input).size === input.length, "Items must be unique")')
+    imports.add('custom')
   }
   
   // Combine all imports

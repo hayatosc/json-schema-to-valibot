@@ -65,8 +65,12 @@ export function parseString(schema: JsonSchema, _context: ParserContext): ParseR
   
   // Build the schema string
   const schemaStr = constraints.length > 0 
-    ? `v.string([${constraints.join(', ')}])`
+    ? `v.pipe(v.string(), ${constraints.join(', ')})`
     : 'v.string()'
+  
+  if (constraints.length > 0) {
+    imports.add('pipe')
+  }
   
   return {
     schema: schemaStr,

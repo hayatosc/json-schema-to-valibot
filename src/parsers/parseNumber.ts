@@ -41,11 +41,32 @@ export function parseNumber(schema: JsonSchema, _context: ParserContext): ParseR
     imports.add('multipleOf')
   }
   
-  // Build the schema string
-  const baseSchema = isInteger ? 'v.integer' : 'v.number'
+  // Build the schema string - use number() for both number and integer
+  const baseSchema = 'v.number()'
   const schemaStr = constraints.length > 0 
-    ? `${baseSchema}([${constraints.join(', ')}])`
-    : `${baseSchema}()`
+    ? `v.pipe(${baseSchema}, ${constraints.join(', ')})`
+    : baseSchema
+  
+  if (constraints.length > 0) {
+    imports.add('pipe')
+  }
+  
+  // Add integer validation if needed
+  if (isInteger && constraints.length === 0) {
+    imports.delete('integer')
+    imports.add('number')
+    imports.add('pipe')
+    imports.add('integer')
+    return {
+      schema: `v.pipe(v.number(), v.integer())`,
+      imports,
+      types: 'number'
+    }
+  } else if (isInteger) {
+    imports.delete('integer')
+    imports.add('integer')
+    constraints.unshift('v.integer()')
+  }
   
   return {
     schema: schemaStr,

@@ -19,7 +19,7 @@ describe('jsonSchemaToValibot', () => {
     }
     const result = jsonSchemaToValibot(schema)
     
-    expect(result).toContain('v.string([v.minLength(5), v.maxLength(100), v.regex(/^[a-z]+$/)])')
+    expect(result).toContain('v.pipe(v.string(), v.minLength(5), v.maxLength(100), v.regex(/^[a-z]+$/))')
   })
   
   it('should convert basic number schema', () => {
@@ -37,7 +37,7 @@ describe('jsonSchemaToValibot', () => {
     }
     const result = jsonSchemaToValibot(schema)
     
-    expect(result).toContain('v.integer([v.minValue(0), v.maxValue(100)])')
+    expect(result).toContain('v.pipe(v.number(), v.minValue(0), v.maxValue(100))')
   })
   
   it('should convert boolean schema', () => {
