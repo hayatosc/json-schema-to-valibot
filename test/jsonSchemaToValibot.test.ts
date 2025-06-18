@@ -142,7 +142,7 @@ describe('jsonSchemaToValibot', () => {
 
     try {
       // Generate schema using CLI
-      execSync(`./dist/cli.cjs -i example-schema.json -o ${testOutputFile}`, {
+      execSync(`node ./dist/cli.cjs -i example-schema.json -o ${testOutputFile}`, {
         encoding: 'utf8',
         stdio: 'pipe',
         timeout: 5000,
