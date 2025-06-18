@@ -16,7 +16,7 @@
     "build": "rolldown --config rolldown.config.mjs && tsc --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsx src/cli.ts",
     "test": "vitest",
-    "test:ui": "vitest --ui",
+    "test:suite": "pnpm build && tsx script/test-suite-runner.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix"
