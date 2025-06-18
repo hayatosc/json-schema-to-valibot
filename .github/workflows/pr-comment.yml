@@ -28,6 +28,7 @@ jobs:
           
           if (!matchArtifact) {
             console.log('No test suite results artifact found');
+            core.setOutput('no_artifact', 'true');
             return;
           }
           
@@ -44,25 +45,32 @@ jobs:
     - name: Extract and parse results
       id: parse-results
       run: |
-        unzip test-results.zip
+        if [ -f test-results.zip ]; then
+          unzip test-results.zip
+        fi
         
         if [ ! -f test-suite-output.txt ]; then
           echo "No test suite output found"
-          exit 1
+          echo "total_tests=0" >> $GITHUB_OUTPUT
+          echo "passed_tests=0" >> $GITHUB_OUTPUT
+          echo "failed_tests=0" >> $GITHUB_OUTPUT
+          echo "error_tests=0" >> $GITHUB_OUTPUT
+          echo "pass_rate=0.0" >> $GITHUB_OUTPUT
+          echo "no_results=true" >> $GITHUB_OUTPUT
+        else
+          # Extract stats from structured CI output
+          TOTAL_TESTS=$(grep "TOTAL_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
+          PASSED_TESTS=$(grep "PASSED_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
+          FAILED_TESTS=$(grep "FAILED_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
+          ERROR_TESTS=$(grep "ERROR_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
+          PASS_RATE=$(grep "PASS_RATE=" test-suite-output.txt | cut -d'=' -f2 || echo "0.0")
+          
+          echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
+          echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
+          echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
+          echo "error_tests=$ERROR_TESTS" >> $GITHUB_OUTPUT
+          echo "pass_rate=$PASS_RATE" >> $GITHUB_OUTPUT
         fi
-        
-        # Extract stats from structured CI output
-        TOTAL_TESTS=$(grep "TOTAL_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
-        PASSED_TESTS=$(grep "PASSED_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
-        FAILED_TESTS=$(grep "FAILED_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
-        ERROR_TESTS=$(grep "ERROR_TESTS=" test-suite-output.txt | cut -d'=' -f2 || echo "0")
-        PASS_RATE=$(grep "PASS_RATE=" test-suite-output.txt | cut -d'=' -f2 || echo "0.0")
-        
-        echo "total_tests=$TOTAL_TESTS" >> $GITHUB_OUTPUT
-        echo "passed_tests=$PASSED_TESTS" >> $GITHUB_OUTPUT
-        echo "failed_tests=$FAILED_TESTS" >> $GITHUB_OUTPUT
-        echo "error_tests=$ERROR_TESTS" >> $GITHUB_OUTPUT
-        echo "pass_rate=$PASS_RATE" >> $GITHUB_OUTPUT
         
         # Get workflow conclusion
         CONCLUSION="${{ github.event.workflow_run.conclusion }}"
@@ -101,11 +109,28 @@ jobs:
           const failedTests = '${{ steps.parse-results.outputs.failed_tests }}';
           const errorTests = '${{ steps.parse-results.outputs.error_tests }}';
           const conclusion = '${{ steps.parse-results.outputs.workflow_conclusion }}';
+          const noResults = '${{ steps.parse-results.outputs.no_results }}';
           
           const statusEmoji = conclusion === 'success' ? '✅' : '❌';
           const passRateColor = parseFloat(passRate) >= 90 ? '🟢' : parseFloat(passRate) >= 70 ? '🟡' : '🔴';
           
-          const comment = `## ${statusEmoji} JSON Schema Test Suite Results
+          let comment;
+          if (noResults === 'true') {
+            comment = `## ❌ JSON Schema Test Suite Results
+          
+          **⚠️ Test suite execution failed or no results available**
+          
+          The test suite could not be executed or did not produce results. This might be due to:
+          - Build failures
+          - Configuration issues
+          - Test suite runner errors
+          
+          📊 [View detailed logs in the workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})
+          
+          ---
+          *This comment is automatically updated for each commit.*`;
+          } else {
+            comment = `## ${statusEmoji} JSON Schema Test Suite Results
           
           **${passRateColor} Overall Pass Rate: ${passRate}%**
           
@@ -122,6 +147,7 @@ jobs:
           
           ---
           *This comment is automatically updated for each commit.*`;
+          }
           
           // Find existing PR comment
           const { data: comments } = await github.rest.issues.listComments({
