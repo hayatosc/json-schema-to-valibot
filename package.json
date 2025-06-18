@@ -7,13 +7,13 @@
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "bin": {
-    "json-schema-to-valibot": "./dist/cli.cjs"
+    "json-schema-to-valibot": "dist/cli.cjs"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "rolldown --config rolldown.config.mjs",
+    "build": "rolldown --config rolldown.config.mjs && tsc --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsx src/cli.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
