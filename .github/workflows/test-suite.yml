@@ -81,3 +81,84 @@ jobs:
         else
           echo "✅ Test suite completed with $TOTAL_TESTS tests"
         fi
+    
+    - name: Comment on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const passRate = '${{ steps.test-suite.outputs.pass_rate }}' || '0.0';
+          const totalTests = '${{ steps.test-suite.outputs.total_tests }}' || '0';
+          const passedTests = '${{ steps.test-suite.outputs.passed_tests }}' || '0';
+          const failedTests = '${{ steps.test-suite.outputs.failed_tests }}' || '0';
+          const errorTests = '${{ steps.test-suite.outputs.error_tests }}' || '0';
+          
+          const statusEmoji = totalTests > 0 ? '✅' : '❌';
+          const passRateColor = parseFloat(passRate) >= 90 ? '🟢' : parseFloat(passRate) >= 70 ? '🟡' : '🔴';
+          
+          let comment;
+          if (totalTests === '0') {
+            comment = `## ❌ JSON Schema Test Suite Results
+          
+          **⚠️ Test suite execution failed or no results available**
+          
+          The test suite could not be executed or did not produce results. This might be due to:
+          - Build failures
+          - Configuration issues
+          - Test suite runner errors
+          
+          📊 [View detailed logs in the workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ---
+          *This comment is automatically updated for each commit.*`;
+          } else {
+            comment = `## ${statusEmoji} JSON Schema Test Suite Results
+          
+          **${passRateColor} Overall Pass Rate: ${passRate}%**
+          
+          | Metric | Count | Percentage |
+          |--------|-------|------------|
+          | Total Tests | ${totalTests} | 100% |
+          | ✅ Passed | ${passedTests} | ${totalTests > 0 ? ((passedTests/totalTests) * 100).toFixed(1) : 0}% |
+          | ❌ Failed | ${failedTests} | ${totalTests > 0 ? ((failedTests/totalTests) * 100).toFixed(1) : 0}% |
+          | 🚨 Errors | ${errorTests} | ${totalTests > 0 ? ((errorTests/totalTests) * 100).toFixed(1) : 0}% |
+          
+          📊 [View detailed results in the workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          ${parseFloat(passRate) >= 90 ? '🎉 Excellent test coverage!' : parseFloat(passRate) >= 70 ? '👍 Good test coverage!' : '⚠️ Test coverage needs improvement.'}
+          
+          ---
+          *This comment is automatically updated for each commit.*`;
+          }
+          
+          // Find existing PR comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.find(comment => 
+            comment.body.includes('JSON Schema Test Suite Results') && 
+            comment.user.login === 'github-actions[bot]'
+          );
+          
+          if (existingComment) {
+            // Update existing comment
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: comment
+            });
+            console.log(`Updated comment ${existingComment.id} on PR #${context.issue.number}`);
+          } else {
+            // Create new comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+            console.log(`Created new comment on PR #${context.issue.number}`);
+          }
