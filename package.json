@@ -15,8 +15,8 @@
   "scripts": {
     "build": "rolldown --config rolldown.config.mjs && tsc --emitDeclarationOnly --declaration --outDir dist",
     "dev": "tsx src/cli.ts",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
+    "test": "pnpm build && vitest",
+    "test:suite": "pnpm build && tsx script/test-suite-runner.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix"
@@ -37,6 +37,7 @@
     "valibot": "1.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.18.0",
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^8.18.2",
     "@typescript-eslint/parser": "^8.18.2",
