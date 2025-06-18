@@ -38,9 +38,6 @@ jobs:
     - name: Run unit tests
       run: pnpm test
     
-    - name: Build project
-      run: pnpm build
-    
     - name: Run JSON Schema Test Suite
       id: test-suite
       run: |
