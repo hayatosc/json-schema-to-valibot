@@ -33,7 +33,7 @@ export function jsonSchemaToValibot(
   }
   
   // Add JSDoc if requested
-  if (withJsDoc && schema.description) {
+  if (withJsDoc && typeof schema === 'object' && schema.description) {
     output += `/**\n * ${schema.description}\n */\n`
   }
   

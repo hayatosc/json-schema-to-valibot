@@ -1,7 +1,7 @@
-import { type JsonSchema, type ParserContext, type ParseResult } from '../types'
+import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../types'
 import { parseSchema } from './parseSchema'
 
-export function parseNot(schema: JsonSchema, context: ParserContext): ParseResult {
+export function parseNot(schema: JsonSchemaObject, context: ParserContext): ParseResult {
   if (!schema.not) {
     return { schema: 'v.any()', imports: new Set(['any']) }
   }

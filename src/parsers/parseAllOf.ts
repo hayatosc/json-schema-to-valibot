@@ -1,7 +1,7 @@
-import { type JsonSchema, type ParserContext, type ParseResult } from '../types'
+import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../types'
 import { parseSchema } from './parseSchema'
 
-export function parseAllOf(schema: JsonSchema, context: ParserContext): ParseResult {
+export function parseAllOf(schema: JsonSchemaObject, context: ParserContext): ParseResult {
   if (!schema.allOf || schema.allOf.length === 0) {
     return { schema: 'v.any()', imports: new Set(['any']) }
   }
@@ -9,7 +9,7 @@ export function parseAllOf(schema: JsonSchema, context: ParserContext): ParseRes
   if (schema.allOf.length === 1) {
     // Single schema - just parse it directly
     const firstSchema = schema.allOf[0]
-    if (!firstSchema) throw new Error('Invalid schema in allOf')
+    if (firstSchema == null) throw new Error('Invalid schema in allOf')
     return parseSchema(firstSchema, { ...context, depth: context.depth + 1 })
   }
   
@@ -18,7 +18,7 @@ export function parseAllOf(schema: JsonSchema, context: ParserContext): ParseRes
   // For other types, we'll try to merge constraints where possible
   
   const results = schema.allOf.map(subSchema => {
-    if (!subSchema) throw new Error('Invalid schema in allOf')
+    if (subSchema == null) throw new Error('Invalid schema in allOf')
     return parseSchema(subSchema, { ...context, depth: context.depth + 1 })
   })
   
@@ -35,7 +35,8 @@ export function parseAllOf(schema: JsonSchema, context: ParserContext): ParseRes
   
   // Check if all schemas are objects - then we can use intersect
   const allObjects = schema.allOf.every(subSchema => 
-    subSchema.type === 'object' || subSchema.properties
+    typeof subSchema === 'object' && subSchema !== null && 
+    (subSchema.type === 'object' || subSchema.properties)
   )
   
   if (allObjects) {
@@ -47,9 +48,32 @@ export function parseAllOf(schema: JsonSchema, context: ParserContext): ParseRes
     }
   }
   
-  // For non-objects, fall back to the first schema with additional constraints
-  // This is a simplification - a full implementation would merge constraints
-  const firstResult = results[0]
+  // For non-objects, check if any schema is never (false)
+  // If any schema in allOf is never, the result is never
+  const hasNeverSchema = results.some(result => result.schema === 'v.never()')
+  if (hasNeverSchema) {
+    allImports.add('never')
+    return {
+      schema: 'v.never()',
+      imports: allImports,
+      types: 'never'
+    }
+  }
+  
+  // Filter out any() schemas and use the most restrictive one
+  const nonAnyResults = results.filter(result => result.schema !== 'v.any()')
+  if (nonAnyResults.length === 0) {
+    // All schemas were any(), result is any()
+    allImports.add('any')
+    return {
+      schema: 'v.any()',
+      imports: allImports,
+      types: types.length > 0 ? types.join(' & ') : undefined
+    }
+  }
+  
+  // For now, use the first non-any schema (this is a simplification)
+  const firstResult = nonAnyResults[0]
   if (!firstResult) {
     return { schema: 'v.any()', imports: new Set(['any']), types: undefined }
   }

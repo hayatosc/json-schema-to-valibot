@@ -1,7 +1,7 @@
-import { type JsonSchema, type ParserContext, type ParseResult } from '../types';
+import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../types';
 import { parseSchema } from './parseSchema';
 
-export function parseObject(schema: JsonSchema, context: ParserContext): ParseResult {
+export function parseObject(schema: JsonSchemaObject, context: ParserContext): ParseResult {
   const imports = new Set(['object']);
 
   // Parse properties

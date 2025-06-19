@@ -1,7 +1,7 @@
-import { type JsonSchema, type ParserContext, type ParseResult } from '../types'
+import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../types'
 import { parseConst } from './parseConst'
 
-export function parseEnum(schema: JsonSchema, context: ParserContext): ParseResult {
+export function parseEnum(schema: JsonSchemaObject, context: ParserContext): ParseResult {
   if (!schema.enum || schema.enum.length === 0) {
     return { schema: 'v.any()', imports: new Set(['any']) }
   }

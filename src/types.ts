@@ -1,4 +1,4 @@
-export interface JsonSchema {
+export interface JsonSchemaObject {
   $schema?: string
   $id?: string
   $ref?: string
@@ -59,6 +59,8 @@ export interface JsonSchema {
   // Nullable
   nullable?: boolean
 }
+
+export type JsonSchema = JsonSchemaObject | boolean
 
 export type JsonSchemaType = 
   | 'null'
