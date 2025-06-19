@@ -1,7 +1,7 @@
 {
   "name": "json-schema-to-valibot",
   "type": "module",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Convert JSON Schema definitions to Valibot schema definitions. Inspired by json-schema-to-zod.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
