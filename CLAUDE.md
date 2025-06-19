@@ -15,6 +15,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Testing Single Files
 - `pnpm test -- jsonSchemaToValibot.test.ts` - Run specific test file
+- `pnpm test:dev` - Run unit tests (excludes end-to-end tests)
+- `pnpm test:e2e` - Run end-to-end tests
+- `pnpm test:suite` - Run JSON Schema test suite validation
 
 ## Architecture
 
@@ -46,3 +49,11 @@ Uses Rolldown with a single configuration that builds three outputs:
 ### Testing
 
 Uses Vitest for testing. Test files are in `test/` directory.
+- `jsonSchemaToValibot.test.ts` - Unit tests for core conversion functionality
+- `end-to-end.test.ts` - End-to-end CLI tests
+- `script/test-suite-runner.ts` - Validates against official JSON Schema test suite
+
+## Design Principles
+
+### Specification Conflicts
+When JSON Schema and Valibot specifications conflict, prioritize clean Valibot-idiomatic code over strict JSON Schema compliance. Accept test failures rather than implementing complex workarounds that compromise code quality or Valibot's design philosophy.
