@@ -44,23 +44,44 @@ export function parseObject(schema: JsonSchemaObject, context: ParserContext): P
   const propsObject = propsEntries.length > 0 ? `{ ${propsEntries.join(', ')} }` : '{}';
 
   // Handle additionalProperties
-  let schemaStr = `v.object(${propsObject})`;
+  let schemaStr: string;
 
   if (schema.additionalProperties === false) {
-    // Strict object - no additional properties allowed
+    // Strict object - no additional properties allowed beyond those in `properties`
     schemaStr = `v.strictObject(${propsObject})`;
     allImports.add('strictObject');
-    allImports.delete('object');
+    allImports.delete('object'); // v.object might have been added by default
   } else if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
-    // Additional properties with specific schema
-    const additionalResult = parseSchema(schema.additionalProperties, {
+    // Additional properties are allowed and must conform to a specific schema
+    const additionalPropsSchema = schema.additionalProperties as JsonSchemaObject; // Cast for type safety
+    const additionalResult = parseSchema(additionalPropsSchema, {
       ...context,
-      depth: context.depth + 1,
+      depth: context.depth + 1, // Ensure depth is managed for nested parsing
+      currentPath: [...context.currentPath, 'additionalProperties'], // Update current path
     });
 
-    schemaStr = `v.record(${additionalResult.schema})`;
-    allImports.add('record');
     additionalResult.imports.forEach((imp) => allImports.add(imp));
+
+    if (propsEntries.length > 0) {
+      // Both properties and additionalProperties (as schema) are defined
+      // Use v.object(shape, rest)
+      schemaStr = `v.object(${propsObject}, ${additionalResult.schema})`;
+      // v.object is already in allImports by default or will be added.
+      // The 'rest' argument for v.object doesn't require a separate 'v.rest' import,
+      // it's a part of v.object's signature.
+    } else {
+      // Only additionalProperties (as schema) is defined, no specific properties
+      // Use v.record(keyType, valueType) -> v.record(valueType) assuming string keys
+      // For JSON schema, keys are always strings.
+      schemaStr = `v.record(${additionalResult.schema})`;
+      allImports.add('record');
+      allImports.delete('object'); // v.object might have been added by default
+    }
+  } else {
+    // Default behavior: additionalProperties is true or undefined (or not a boolean/object)
+    // Allow any additional properties
+    schemaStr = `v.object(${propsObject})`;
+    // v.object is already in allImports by default.
   }
 
   // Build TypeScript type

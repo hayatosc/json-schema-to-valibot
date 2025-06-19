@@ -92,9 +92,24 @@ function parseSchemaType(schema: JsonSchemaObject, context: ParserContext): Pars
   }
 }
 
-function handleRef(ref: string, _context: ParserContext): ParseResult {
-  // Simple $ref handling - in a full implementation, this would resolve references
-  // For now, just return any() as a placeholder
-  console.warn(`$ref resolution not yet implemented: ${ref}`)
-  return { schema: 'v.any()', imports: new Set(['any']) }
+function handleRef(ref: string, context: ParserContext): ParseResult {
+  const refData = context.refs.get(ref)
+
+  if (refData) {
+    // If the definition is currently being processed, this indicates a circular dependency.
+    if (refData.isProcessing) {
+      console.warn(`Circular dependency detected for ${ref}. Using v.any() as fallback.`)
+      // Return v.any() for direct circular refs. The main loop in jsonSchemaToValibot will also handle this.
+      return { schema: 'v.any()', imports: new Set(['v']) } // 'v' for v.any()
+    }
+    // If the code for this ref has already been generated (e.g. processing nested refs within a definition),
+    // and we encounter it again, we should use its schemaName.
+    // However, the primary generation of definition code happens in jsonSchemaToValibot.ts.
+    // Here, we just need to return the schemaName so it's used in the referencing schema.
+    return { schema: refData.schemaName, imports: new Set() } // Imports for the definition itself are handled when it's declared.
+  }
+
+  // Fallback for unresolved refs (e.g., external refs or typos)
+  console.warn(`$ref not found: ${ref}. Using v.any() as fallback.`)
+  return { schema: 'v.any()', imports: new Set(['v']) } // 'v' for v.any()
 }
