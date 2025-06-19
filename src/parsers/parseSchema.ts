@@ -1,4 +1,4 @@
-import { type JsonSchema, type ParserContext, type ParseResult } from '../types'
+import { type JsonSchema, type JsonSchemaObject, type ParserContext, type ParseResult } from '../types'
 import { parseString } from './parseString'
 import { parseNumber } from './parseNumber'
 import { parseBoolean } from './parseBoolean'
@@ -16,6 +16,15 @@ export function parseSchema(schema: JsonSchema, context: ParserContext): ParseRe
   // Prevent infinite recursion
   if (context.depth > context.maxDepth) {
     return { schema: 'v.any()', imports: new Set(['any']) }
+  }
+
+  // Handle boolean schemas
+  if (typeof schema === 'boolean') {
+    if (schema === true) {
+      return { schema: 'v.any()', imports: new Set(['any']) }
+    } else {
+      return { schema: 'v.never()', imports: new Set(['never']) }
+    }
   }
 
   // Handle $ref
@@ -46,7 +55,7 @@ export function parseSchema(schema: JsonSchema, context: ParserContext): ParseRe
   return parseSchemaType(schema, context)
 }
 
-function parseSchemaType(schema: JsonSchema, context: ParserContext): ParseResult {
+function parseSchemaType(schema: JsonSchemaObject, context: ParserContext): ParseResult {
   const type = schema.type
 
   if (Array.isArray(type)) {

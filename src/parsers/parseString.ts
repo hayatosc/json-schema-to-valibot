@@ -1,6 +1,6 @@
-import { type JsonSchema, type ParserContext, type ParseResult } from '../types'
+import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../types'
 
-export function parseString(schema: JsonSchema, _context: ParserContext): ParseResult {
+export function parseString(schema: JsonSchemaObject, _context: ParserContext): ParseResult {
   const imports = new Set(['string'])
   const constraints: string[] = []
   

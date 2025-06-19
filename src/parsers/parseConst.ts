@@ -1,6 +1,6 @@
-import { type JsonSchema, type ParserContext, type ParseResult } from '../types'
+import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../types'
 
-export function parseConst(schema: JsonSchema, context: ParserContext): ParseResult {
+export function parseConst(schema: JsonSchemaObject, context: ParserContext): ParseResult {
   const value = schema.const
   
   // For primitive values, use literal which is more efficient

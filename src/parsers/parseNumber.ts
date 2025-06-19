@@ -1,6 +1,6 @@
-import { type JsonSchema, type ParserContext, type ParseResult } from '../types'
+import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../types'
 
-export function parseNumber(schema: JsonSchema, _context: ParserContext): ParseResult {
+export function parseNumber(schema: JsonSchemaObject, _context: ParserContext): ParseResult {
   const isInteger = schema.type === 'integer'
   const imports = new Set([isInteger ? 'integer' : 'number'])
   const constraints: string[] = []
