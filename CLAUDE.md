@@ -52,3 +52,8 @@ Uses Vitest for testing. Test files are in `test/` directory.
 - `jsonSchemaToValibot.test.ts` - Unit tests for core conversion functionality
 - `end-to-end.test.ts` - End-to-end CLI tests
 - `script/test-suite-runner.ts` - Validates against official JSON Schema test suite
+
+## Design Principles
+
+### Specification Conflicts
+When JSON Schema and Valibot specifications conflict, prioritize clean Valibot-idiomatic code over strict JSON Schema compliance. Accept test failures rather than implementing complex workarounds that compromise code quality or Valibot's design philosophy.
