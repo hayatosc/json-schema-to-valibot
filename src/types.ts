@@ -77,10 +77,21 @@ export interface ConversionOptions {
   withTypes?: boolean
   withJsDoc?: boolean
   maxDepth?: number
+  exportDefinitions?: boolean
 }
 
 export interface ParserContext {
-  refs: Map<string, JsonSchema>
+  refs: Map<
+    string,
+    {
+      schemaName: string
+      rawSchema: JsonSchema
+      isProcessing?: boolean
+      generatedCode?: string
+      generatedImports?: Set<string>
+      isRecursive?: boolean
+    }
+  >
   depth: number
   maxDepth: number
   currentPath: string[]

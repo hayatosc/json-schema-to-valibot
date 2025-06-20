@@ -79,13 +79,14 @@ console.log(valibotCode)
 - `object` with properties, required fields, additionalProperties
 
 ### Advanced Features  
-- `const` values → `v.literal()`
-- `enum` values → `v.picklist()`
+- `const` values → `v.literal()` for primitives, `v.object()`/`v.tuple()` for complex types
+- `enum` values → `v.picklist()` for primitives, `v.union()` for mixed types
 - `anyOf` → `v.union()`
 - `allOf` → `v.intersect()` (for objects)
 - `oneOf` → `v.union()`
 - `not` → `v.custom()` validation
 - `nullable` → `v.nullable()`
+- Boolean schemas → `true` becomes `v.any()`, `false` becomes `v.never()`
 
 ### String Formats
 - `email` → `v.email()`
@@ -149,8 +150,18 @@ pnpm install
 # Run tests
 pnpm test
 
+# Run specific test categories
+pnpm test:dev      # Unit tests only
+pnpm test:e2e      # End-to-end CLI tests
+pnpm test:suite    # JSON Schema test suite validation
+pnpm test:ui       # Tests with UI interface
+
 # Type check
 pnpm typecheck
+
+# Lint code
+pnpm lint
+pnpm lint:fix
 
 # Build
 pnpm build
