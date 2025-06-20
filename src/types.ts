@@ -89,6 +89,7 @@ export interface ParserContext {
       isProcessing?: boolean
       generatedCode?: string
       generatedImports?: Set<string>
+      isRecursive?: boolean
     }
   >
   depth: number

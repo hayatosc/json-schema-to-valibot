@@ -98,15 +98,21 @@ function handleRef(ref: string, context: ParserContext): ParseResult {
   if (refData) {
     // If the definition is currently being processed, this indicates a circular dependency.
     if (refData.isProcessing) {
-      console.warn(`Circular dependency detected for ${ref}. Using v.any() as fallback.`)
-      // Return v.any() for direct circular refs. The main loop in jsonSchemaToValibot will also handle this.
-      return { schema: 'v.any()', imports: new Set(['v']) } // 'v' for v.any()
+      console.warn(`Circular dependency detected for ${ref}. Using v.lazy() for proper recursion.`)
+      // Mark as recursive for proper type annotation
+      refData.isRecursive = true;
+      // Use v.lazy() for proper recursive schema support
+      // For recursive schemas, reference the schema (not the type)
+      const schemaReference = refData.isRecursive ? `${refData.schemaName}Schema` : refData.schemaName;
+      return { schema: `v.lazy(() => ${schemaReference})`, imports: new Set(['lazy']) }
     }
     // If the code for this ref has already been generated (e.g. processing nested refs within a definition),
     // and we encounter it again, we should use its schemaName.
     // However, the primary generation of definition code happens in jsonSchemaToValibot.ts.
     // Here, we just need to return the schemaName so it's used in the referencing schema.
-    return { schema: refData.schemaName, imports: new Set() } // Imports for the definition itself are handled when it's declared.
+    // For recursive schemas, always use the Schema suffix for consistency
+    const schemaReference = refData.isRecursive ? `${refData.schemaName}Schema` : refData.schemaName;
+    return { schema: schemaReference, imports: new Set() } // Imports for the definition itself are handled when it's declared.
   }
 
   // Fallback for unresolved refs (e.g., external refs or typos)

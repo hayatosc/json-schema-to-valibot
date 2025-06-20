@@ -16,8 +16,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Testing Single Files
 - `pnpm test -- jsonSchemaToValibot.test.ts` - Run specific test file
 - `pnpm test:dev` - Run unit tests (excludes end-to-end tests)
-- `pnpm test:e2e` - Run end-to-end tests
-- `pnpm test:suite` - Run JSON Schema test suite validation
+- `pnpm test:e2e` - Run end-to-end tests (builds first)
+- `pnpm test:suite` - Run JSON Schema test suite validation (builds first)
+- `pnpm test:ui` - Run tests with Vitest UI interface
 
 ## Architecture
 
@@ -51,9 +52,23 @@ Uses Rolldown with a single configuration that builds three outputs:
 Uses Vitest for testing. Test files are in `test/` directory.
 - `jsonSchemaToValibot.test.ts` - Unit tests for core conversion functionality
 - `end-to-end.test.ts` - End-to-end CLI tests
-- `script/test-suite-runner.ts` - Validates against official JSON Schema test suite
+- `script/test-suite-runner.ts` - Validates against official JSON Schema test suite (includes git submodule)
+
+The `json-schema-test-suite/` directory contains the official JSON Schema test suite as a git submodule, providing comprehensive validation against the JSON Schema specification.
+
+### CI/CD
+- **GitHub Actions**: Automated testing on PRs and main branch
+- **Test Suite Workflow**: Runs full JSON Schema test suite with accuracy reporting
+- **Release Workflow**: Automated npm publishing on GitHub releases
+- **PR Comments**: Automatic test results posted to pull requests
 
 ## Design Principles
 
 ### Specification Conflicts
 When JSON Schema and Valibot specifications conflict, prioritize clean Valibot-idiomatic code over strict JSON Schema compliance. Accept test failures rather than implementing complex workarounds that compromise code quality or Valibot's design philosophy.
+
+### Recent Improvements (v0.2.0)
+- **Boolean Schema Support**: Proper handling of `true`/`false` schemas (`v.any()`/`v.never()`)
+- **Enhanced Const/Enum Parsing**: Uses Valibot native structural validation for complex types
+- **Improved Test Coverage**: ~78% pass rate on official JSON Schema test suite
+- **Zero Error Tests**: All ERROR-level test failures resolved

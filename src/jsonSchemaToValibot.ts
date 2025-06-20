@@ -10,6 +10,82 @@ function sanitizeIdentifier(name: string): string {
     .replace(/^[0-9]/, '_$&')         // Prefix with underscore if starts with digit
 }
 
+function generateTypeScriptType(schema: JsonSchema, typeName: string, context: ParserContext): string {
+  if (typeof schema === 'boolean') {
+    return schema ? 'any' : 'never';
+  }
+
+  if (schema.$ref) {
+    const refKey = schema.$ref;
+    const refData = context.refs.get(refKey);
+    if (refData) {
+      return refData.schemaName;
+    }
+    return 'any';
+  }
+
+  switch (schema.type) {
+    case 'string':
+      return 'string';
+    case 'number':
+    case 'integer':
+      return 'number';
+    case 'boolean':
+      return 'boolean';
+    case 'null':
+      return 'null';
+    case 'array':
+      if (schema.items) {
+        if (Array.isArray(schema.items)) {
+          // Tuple type
+          const itemTypes = schema.items.map((item, i) => generateTypeScriptType(item, `${typeName}Item${i}`, context));
+          return `[${itemTypes.join(', ')}]`;
+        } else {
+          const itemType = generateTypeScriptType(schema.items, `${typeName}Item`, context);
+          return `${itemType}[]`;
+        }
+      }
+      return 'any[]';
+    case 'object':
+      if (schema.properties) {
+        const required = schema.required || [];
+        const props = Object.entries(schema.properties).map(([key, propSchema]) => {
+          const propType = generateTypeScriptType(propSchema, `${typeName}${key.charAt(0).toUpperCase() + key.slice(1)}`, context);
+          const isRequired = required.includes(key);
+          const keyStr = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : `"${key}"`;
+          return `${keyStr}${isRequired ? '' : '?'}: ${propType}`;
+        });
+        
+        let typeBody = `{ ${props.join('; ')} }`;
+        
+        // Handle additionalProperties
+        if (schema.additionalProperties === true) {
+          typeBody = `{ ${props.join('; ')}; [key: string]: any }`;
+        } else if (typeof schema.additionalProperties === 'object') {
+          const additionalType = generateTypeScriptType(schema.additionalProperties, `${typeName}Additional`, context);
+          typeBody = `{ ${props.join('; ')}; [key: string]: ${additionalType} }`;
+        }
+        
+        return typeBody;
+      }
+      return 'Record<string, any>';
+    default:
+      if (schema.anyOf) {
+        const types = schema.anyOf.map((s, i) => generateTypeScriptType(s, `${typeName}Option${i}`, context));
+        return types.join(' | ');
+      }
+      if (schema.oneOf) {
+        const types = schema.oneOf.map((s, i) => generateTypeScriptType(s, `${typeName}Option${i}`, context));
+        return types.join(' | ');
+      }
+      if (schema.allOf) {
+        const types = schema.allOf.map((s, i) => generateTypeScriptType(s, `${typeName}Variant${i}`, context));
+        return types.join(' & ');
+      }
+      return 'any';
+  }
+}
+
 export function jsonSchemaToValibot(
   schema: JsonSchema,
   options: ConversionOptions = {}
@@ -46,6 +122,60 @@ export function jsonSchemaToValibot(
     }
     processDefinitions(schema.definitions, '#/definitions/')
     processDefinitions(schema.$defs, '#/$defs/')
+  }
+
+  // Pre-scan for circular dependencies to determine which schemas are recursive
+  const detectCircularDependencies = (schemaToCheck: JsonSchema, refKey: string, visited: Set<string>, processing: Set<string>): boolean => {
+    if (processing.has(refKey)) {
+      return true; // Found circular dependency
+    }
+    if (visited.has(refKey)) {
+      return false; // Already checked, no circular dependency from this path
+    }
+
+    visited.add(refKey);
+    processing.add(refKey);
+
+    if (typeof schemaToCheck === 'object' && schemaToCheck !== null) {
+      // Check for $ref properties recursively
+      const checkForRefs = (obj: any): boolean => {
+        if (typeof obj === 'object' && obj !== null) {
+          if (obj.$ref && typeof obj.$ref === 'string') {
+            if (processing.has(obj.$ref)) {
+              return true; // Circular dependency found
+            }
+            const refData = context.refs.get(obj.$ref);
+            if (refData) {
+              if (detectCircularDependencies(refData.rawSchema, obj.$ref, visited, processing)) {
+                return true;
+              }
+            }
+          }
+          // Recursively check all properties
+          for (const value of Object.values(obj)) {
+            if (checkForRefs(value)) {
+              return true;
+            }
+          }
+        }
+        return false;
+      };
+
+      const isCircular = checkForRefs(schemaToCheck);
+      processing.delete(refKey);
+      return isCircular;
+    }
+
+    processing.delete(refKey);
+    return false;
+  };
+
+  // Mark recursive schemas
+  for (const [refKey, refData] of context.refs) {
+    const isRecursive = detectCircularDependencies(refData.rawSchema, refKey, new Set(), new Set());
+    if (isRecursive) {
+      refData.isRecursive = true;
+    }
   }
 
   const mainSchemaResult = parseSchema(schema, context)
@@ -85,7 +215,19 @@ export function jsonSchemaToValibot(
       defJsDoc = `/**\n * ${refData.rawSchema.description}\n */\n`;
     }
     const exportKeyword = exportDefinitions ? 'export const' : 'const';
-    definitionsOutput += `${defJsDoc}${exportKeyword} ${refData.schemaName} = ${result.schema};\n\n`
+    
+    // Add type annotation for recursive schemas
+    if (refData.isRecursive) {
+      // Generate TypeScript type definition for recursive schemas
+      const tsType = generateTypeScriptType(refData.rawSchema, refData.schemaName, context);
+      const exportTypeKeyword = exportDefinitions ? 'export type' : 'type';
+      definitionsOutput += `${exportTypeKeyword} ${refData.schemaName} = ${tsType};\n\n`;
+      
+      // For recursive schemas, we need explicit type annotation
+      definitionsOutput += `${defJsDoc}${exportKeyword} ${refData.schemaName}Schema: v.GenericSchema<${refData.schemaName}> = ${result.schema};\n\n`
+    } else {
+      definitionsOutput += `${defJsDoc}${exportKeyword} ${refData.schemaName} = ${result.schema};\n\n`
+    }
     processedRefs.add(refKey)
   }
   

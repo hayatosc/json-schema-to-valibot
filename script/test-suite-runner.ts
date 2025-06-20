@@ -209,8 +209,27 @@ class TestSuiteRunner {
       console.log(line);
     });
 
+    // Show ERROR test details first
+    const errorResults = this.results.filter(r => r.status === 'ERROR');
+    if (errorResults.length > 0) {
+      console.log(`\n🚨 ERROR Test Results (${errorResults.length} errors):`);
+      console.log('Category'.padEnd(15) + 'Schema'.padEnd(40) + 'Test'.padEnd(40) + 'Error');
+      console.log('-'.repeat(150));
+
+      errorResults.forEach(result => {
+        const truncatedSchema = result.schema.length > 38 ? result.schema.substring(0, 35) + '...' : result.schema;
+        const truncatedTest = result.test.length > 38 ? result.test.substring(0, 35) + '...' : result.test;
+        
+        const line = result.category.padEnd(15) + 
+                     truncatedSchema.padEnd(40) + 
+                     truncatedTest.padEnd(40) + 
+                     (result.error || 'Unknown error');
+        console.log(line);
+      });
+    }
+
     // Only show detailed results for failed tests to reduce noise
-    const failedResults = this.results.filter(r => r.status === 'FAIL' || r.status === 'ERROR');
+    const failedResults = this.results.filter(r => r.status === 'FAIL');
     if (failedResults.length > 0) {
       console.log(`\n❌ Failed Test Results (${failedResults.length} failures):`);
       console.log('Category'.padEnd(15) + 'Schema'.padEnd(30) + 'Test'.padEnd(35) + 'Input'.padEnd(20) + 'Expected'.padEnd(9) + 'Actual'.padEnd(7) + 'Status');

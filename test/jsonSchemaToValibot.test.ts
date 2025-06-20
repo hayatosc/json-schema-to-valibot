@@ -200,12 +200,89 @@ describe('jsonSchemaToValibot', () => {
       };
       const result = jsonSchemaToValibot(schema);
 
-      // Should generate the Node definition
-      expect(result).toContain('export const Node = v.object({');
+      // Should generate the Node definition with type annotation for recursion
+      expect(result).toContain('export type Node = { value?: string; child?: Node };');
+      expect(result).toContain('export const NodeSchema: v.GenericSchema<Node> = v.object({');
       expect(result).toContain('"value": v.optional(v.string())');
       
-      // Should handle circular reference (fallback to v.any() or similar)
-      expect(result).toContain('"child": v.optional(v.any())'); 
+      // Should handle circular reference with v.lazy()
+      expect(result).toContain('"child": v.optional(v.lazy(() => NodeSchema))');  
+    });
+
+    it('should handle more complex recursive schemas (binary tree)', () => {
+      const schema = {
+        type: 'object' as const,
+        properties: {
+          tree: { $ref: '#/definitions/BinaryTree' },
+        },
+        definitions: {
+          BinaryTree: {
+            type: 'object' as const,
+            properties: {
+              value: { type: 'number' as const },
+              left: { 
+                anyOf: [
+                  { $ref: '#/definitions/BinaryTree' },
+                  { type: 'null' as const }
+                ]
+              },
+              right: { 
+                anyOf: [
+                  { $ref: '#/definitions/BinaryTree' },
+                  { type: 'null' as const }
+                ]
+              },
+            },
+            required: ['value']
+          },
+        },
+      };
+      const result = jsonSchemaToValibot(schema);
+
+      // Should generate the BinaryTree definition with type annotation for recursion
+      expect(result).toContain('export type BinaryTree = { value: number; left?: BinaryTree | null; right?: BinaryTree | null };');
+      expect(result).toContain('export const BinaryTreeSchema: v.GenericSchema<BinaryTree> = v.object({');
+      expect(result).toContain('"value": v.number()');
+      
+      // Should handle recursive references in left and right with v.lazy()
+      expect(result).toContain('v.lazy(() => BinaryTreeSchema)');
+    });
+
+    it('should generate proper TypeScript types for recursive schemas', () => {
+      const schema = {
+        type: 'object' as const,
+        properties: {
+          jsonValue: { $ref: '#/definitions/JsonValue' },
+        },
+        definitions: {
+          JsonValue: {
+            anyOf: [
+              { type: 'string' as const },
+              { type: 'number' as const },
+              { type: 'boolean' as const },
+              { type: 'null' as const },
+              {
+                type: 'object' as const,
+                additionalProperties: { $ref: '#/definitions/JsonValue' }
+              },
+              {
+                type: 'array' as const,
+                items: { $ref: '#/definitions/JsonValue' }
+              }
+            ]
+          },
+        },
+      };
+      const result = jsonSchemaToValibot(schema);
+
+      // Should generate recursive JSON value schema with type annotation
+      expect(result).toContain('export type JsonValue = string | number | boolean | null | Record<string, any> | JsonValue[];');
+      expect(result).toContain('export const JsonValueSchema: v.GenericSchema<JsonValue> = v.union([');
+      expect(result).toContain('v.lazy(() => JsonValueSchema)');
+      expect(result).toContain('v.string()');
+      expect(result).toContain('v.number()');
+      expect(result).toContain('v.boolean()');
+      expect(result).toContain('v.null_()');
     });
 
     it('should not export definitions when exportDefinitions is false', () => {
