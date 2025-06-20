@@ -18,7 +18,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm test:dev` - Run unit tests (excludes end-to-end tests)
 - `pnpm test:e2e` - Run end-to-end tests (builds first)
 - `pnpm test:suite` - Run JSON Schema test suite validation (builds first)
-- `pnpm test:ui` - Run tests with Vitest UI interface
 
 ## Architecture
 
@@ -67,7 +66,16 @@ The `json-schema-test-suite/` directory contains the official JSON Schema test s
 ### Specification Conflicts
 When JSON Schema and Valibot specifications conflict, prioritize clean Valibot-idiomatic code over strict JSON Schema compliance. Accept test failures rather than implementing complex workarounds that compromise code quality or Valibot's design philosophy.
 
-### Recent Improvements (v0.2.0)
+### Recent Improvements
+
+#### v0.3.0 - TypeScript Type Generation & Recursive Schemas
+- **Proper TypeScript Type Generation**: Generates actual TypeScript types instead of `v.GenericSchema<any>`
+- **Advanced Recursive Schema Support**: Full support for circular dependencies using `v.lazy()`
+- **Enhanced $ref Resolution**: Complete support for `definitions` and `$defs` with proper naming
+- **Export Control**: `exportDefinitions` option to control whether definitions are exported
+- **Pre-scanning**: Detects circular dependencies before processing for optimal code generation
+
+#### v0.2.0 - Foundation Improvements
 - **Boolean Schema Support**: Proper handling of `true`/`false` schemas (`v.any()`/`v.never()`)
 - **Enhanced Const/Enum Parsing**: Uses Valibot native structural validation for complex types
 - **Improved Test Coverage**: ~78% pass rate on official JSON Schema test suite

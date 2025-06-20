@@ -44,6 +44,7 @@ json-schema-to-valibot -i schema.json --name userSchema
 - `-t, --types` - Generate TypeScript type exports
 - `-d, --jsdoc` - Include JSDoc comments
 - `--depth <number>` - Maximum recursion depth (default: 10)
+- `--export-definitions` - Export schema definitions (default: true)
 
 ## Programmatic Usage
 
@@ -62,7 +63,8 @@ const schema = {
 const valibotCode = jsonSchemaToValibot(schema, {
   name: 'userSchema',
   module: 'esm',
-  withTypes: true
+  withTypes: true,
+  exportDefinitions: true // Control whether to export schema definitions
 })
 
 console.log(valibotCode)
@@ -87,6 +89,12 @@ console.log(valibotCode)
 - `not` → `v.custom()` validation
 - `nullable` → `v.nullable()`
 - Boolean schemas → `true` becomes `v.any()`, `false` becomes `v.never()`
+
+### References & Recursive Schemas
+- `$ref` → Resolves references to `definitions` and `$defs`
+- **Recursive schemas** → Uses `v.lazy()` for circular dependencies
+- **TypeScript types** → Generates proper TypeScript type definitions for recursive schemas
+- **Export control** → `exportDefinitions` option to control definition exports
 
 ### String Formats
 - `email` → `v.email()`
@@ -141,6 +149,60 @@ export const schema = v.object({
 })
 ```
 
+### Recursive Schema Example
+
+Input JSON Schema with recursive references:
+```json
+{
+  "type": "object",
+  "properties": {
+    "tree": { "$ref": "#/definitions/BinaryTree" }
+  },
+  "definitions": {
+    "BinaryTree": {
+      "type": "object",
+      "properties": {
+        "value": { "type": "number" },
+        "left": {
+          "anyOf": [
+            { "$ref": "#/definitions/BinaryTree" },
+            { "type": "null" }
+          ]
+        },
+        "right": {
+          "anyOf": [
+            { "$ref": "#/definitions/BinaryTree" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "required": ["value"]
+    }
+  }
+}
+```
+
+Generated output with proper TypeScript types:
+```typescript
+import * as v from 'valibot'
+
+export type BinaryTree = { 
+  value: number; 
+  left?: BinaryTree | null; 
+  right?: BinaryTree | null 
+};
+
+export const BinaryTreeSchema: v.GenericSchema<BinaryTree> = v.object({
+  "value": v.number(),
+  "left": v.optional(v.union([v.lazy(() => BinaryTreeSchema), v.null_()])),
+  "right": v.optional(v.union([v.lazy(() => BinaryTreeSchema), v.null_()]))
+});
+
+export const schema = v.object({
+  "tree": v.optional(BinaryTreeSchema)
+})
+```
+
 ## Development
 
 ```bash
@@ -154,7 +216,6 @@ pnpm test
 pnpm test:dev      # Unit tests only
 pnpm test:e2e      # End-to-end CLI tests
 pnpm test:suite    # JSON Schema test suite validation
-pnpm test:ui       # Tests with UI interface
 
 # Type check
 pnpm typecheck
