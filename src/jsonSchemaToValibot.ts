@@ -1,6 +1,15 @@
 import { type JsonSchema, type ConversionOptions, type ParserContext } from './types'
 import { parseSchema } from './parsers/parseSchema'
 
+function sanitizeIdentifier(name: string): string {
+  // Replace invalid JavaScript identifier characters with underscores
+  // Valid identifiers can only contain letters, digits, underscore, and dollar sign
+  // and cannot start with a digit
+  return name
+    .replace(/[^a-zA-Z0-9_$]/g, '_')  // Replace invalid chars with underscore
+    .replace(/^[0-9]/, '_$&')         // Prefix with underscore if starts with digit
+}
+
 export function jsonSchemaToValibot(
   schema: JsonSchema,
   options: ConversionOptions = {}
@@ -29,7 +38,7 @@ export function jsonSchemaToValibot(
           const defSchema = definitions[key]
           // Ensure defSchema is an object, as boolean schemas cannot be definitions
           if (typeof defSchema === 'object') {
-            const schemaName = key // Use natural name without Schema suffix
+            const schemaName = sanitizeIdentifier(key) // Sanitize the key to make it a valid JavaScript identifier
             context.refs.set(`${pathPrefix}${key}`, { schemaName, rawSchema: defSchema })
           }
         }
