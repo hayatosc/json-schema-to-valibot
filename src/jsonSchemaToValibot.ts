@@ -10,7 +10,8 @@ export function jsonSchemaToValibot(
     module = 'esm',
     withTypes = false,
     withJsDoc = false,
-    maxDepth = 10
+    maxDepth = 10,
+    exportDefinitions = true
   } = options
 
   const context: ParserContext = {
@@ -28,7 +29,7 @@ export function jsonSchemaToValibot(
           const defSchema = definitions[key]
           // Ensure defSchema is an object, as boolean schemas cannot be definitions
           if (typeof defSchema === 'object') {
-            const schemaName = `${key}Schema` // Simple name generation, might need refinement
+            const schemaName = key // Use natural name without Schema suffix
             context.refs.set(`${pathPrefix}${key}`, { schemaName, rawSchema: defSchema })
           }
         }
@@ -74,7 +75,8 @@ export function jsonSchemaToValibot(
     if (withJsDoc && typeof refData.rawSchema === 'object' && refData.rawSchema.description) {
       defJsDoc = `/**\n * ${refData.rawSchema.description}\n */\n`;
     }
-    definitionsOutput += `${defJsDoc}const ${refData.schemaName} = ${result.schema};\n\n`
+    const exportKeyword = exportDefinitions ? 'export const' : 'const';
+    definitionsOutput += `${defJsDoc}${exportKeyword} ${refData.schemaName} = ${result.schema};\n\n`
     processedRefs.add(refKey)
   }
   
@@ -89,6 +91,7 @@ export function jsonSchemaToValibot(
     const uniqueValibotImports = [...new Set(valibotImports)];
 
     let importStringContent = '* as v';
+    const specificImports = uniqueValibotImports.filter(imp => imp !== 'v');
     if (uniqueValibotImports.length > 0 && !uniqueValibotImports.includes('v')) {
       // This logic might need adjustment based on how parseSchema returns imports.
       // If parseSchema returns "v.object" etc., then we need to extract "object".
@@ -97,7 +100,6 @@ export function jsonSchemaToValibot(
       // A simple approach: if 'v' is in allImports, use '* as v'. Otherwise, list them.
       // However, current parseSchema tends to add 'v.object', 'v.string' etc.
       // Let's refine this:
-      const specificImports = uniqueValibotImports.filter(imp => imp !== 'v');
       if (specificImports.length > 0 && !allImports.has('v')) {
          importStringContent = `{ ${specificImports.join(', ')} }`;
       }

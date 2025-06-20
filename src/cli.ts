@@ -51,6 +51,11 @@ const main = defineCommand({
       type: 'string',
       description: 'Maximum recursion depth',
       default: '10'
+    },
+    'export-definitions': {
+      type: 'boolean',
+      description: 'Export schema definitions',
+      default: true
     }
   },
   async run({ args }) {
@@ -93,8 +98,10 @@ const main = defineCommand({
         module: args.module as 'esm' | 'cjs' | 'none',
         withTypes: args.types,
         withJsDoc: args.jsdoc,
-        maxDepth: parseInt(args.depth, 10)
+        maxDepth: parseInt(args.depth, 10),
+        exportDefinitions: args['export-definitions']
       }
+      
       
       // Convert schema
       const valibotCode = jsonSchemaToValibot(jsonSchema, options)

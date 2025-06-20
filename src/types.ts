@@ -77,6 +77,7 @@ export interface ConversionOptions {
   withTypes?: boolean
   withJsDoc?: boolean
   maxDepth?: number
+  exportDefinitions?: boolean
 }
 
 export interface ParserContext {
