@@ -13,7 +13,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "rolldown --config rolldown.config.mjs && tsc --emitDeclarationOnly --declaration --outDir dist",
+    "build": "tsdown",
     "dev": "tsx src/cli.ts",
     "test": "pnpm test:dev && pnpm test:e2e && pnpm test:suite",
     "test:dev": "vitest --exclude='**/end-to-end.test.ts'",
@@ -44,7 +44,7 @@
     "@typescript-eslint/eslint-plugin": "^8.18.2",
     "@typescript-eslint/parser": "^8.18.2",
     "eslint": "^9.18.0",
-    "rolldown": "^0.15.0",
+    "tsdown": "0.12.9",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vitest": "^3.2.4"
