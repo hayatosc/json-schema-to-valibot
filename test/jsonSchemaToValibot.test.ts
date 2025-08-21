@@ -380,7 +380,7 @@ describe('jsonSchemaToValibot', () => {
       const result = jsonSchemaToValibot(schema);
 
       // Should use v.record when only additionalProperties is specified
-      expect(result).toContain('v.record(v.number())'); // Based on actual output
+      expect(result).toContain('v.record(v.string(), v.number())'); // Based on actual output
     });
 
     it('should handle complex additionalProperties with nested schema', () => {

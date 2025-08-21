@@ -71,9 +71,8 @@ export function parseObject(schema: JsonSchemaObject, context: ParserContext): P
       // it's a part of v.object's signature.
     } else {
       // Only additionalProperties (as schema) is defined, no specific properties
-      // Use v.record(keyType, valueType) -> v.record(valueType) assuming string keys
       // For JSON schema, keys are always strings.
-      schemaStr = `v.record(${additionalResult.schema})`;
+      schemaStr = `v.record(v.string(), ${additionalResult.schema})`;
       allImports.add('record');
       allImports.delete('object'); // v.object might have been added by default
     }
