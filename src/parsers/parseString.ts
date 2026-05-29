@@ -42,8 +42,8 @@ export function parseString(schema: JsonSchemaObject, _context: ParserContext): 
         imports.add('isoDate')
         break
       case 'date-time':
-        constraints.push('v.isoDateTime()')
-        imports.add('isoDateTime')
+        constraints.push('v.isoTimestamp()')
+        imports.add('isoTimestamp')
         break
       case 'time':
         constraints.push('v.isoTime()')
