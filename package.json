@@ -9,6 +9,10 @@
   "bin": {
     "json-schema-to-valibot": "dist/cli.cjs"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hayatosc/json-schema-to-valibot.git"
+  },
   "files": [
     "dist"
   ],
