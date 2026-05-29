@@ -44,8 +44,15 @@
     "format:check": "oxfmt --check ."
   },
   "dependencies": {
-    "citty": "^0.1.6",
-    "valibot": "1.1.0"
+    "citty": "^0.1.6"
+  },
+  "peerDependencies": {
+    "valibot": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "valibot": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
@@ -56,6 +63,7 @@
     "tsdown": "0.12.9",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
+    "valibot": "1.1.0",
     "vitest": "^3.2.4"
   },
   "engines": {
