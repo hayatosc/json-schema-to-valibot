@@ -4,50 +4,50 @@ export interface JsonSchemaObject {
   $ref?: string
   $defs?: Record<string, JsonSchema>
   definitions?: Record<string, JsonSchema>
-  
+
   // Type
   type?: JsonSchemaType | JsonSchemaType[]
-  
+
   // String
   minLength?: number
   maxLength?: number
   pattern?: string
   format?: string
-  
+
   // Number
   minimum?: number
   maximum?: number
   exclusiveMinimum?: number | boolean
   exclusiveMaximum?: number | boolean
   multipleOf?: number
-  
+
   // Array
   items?: JsonSchema | JsonSchema[]
-  additionalItems?: JsonSchema | boolean
+  additionalItems?: JsonSchema
   minItems?: number
   maxItems?: number
   uniqueItems?: boolean
-  
+
   // Object
   properties?: Record<string, JsonSchema>
-  additionalProperties?: JsonSchema | boolean
+  additionalProperties?: JsonSchema
   required?: string[]
   minProperties?: number
   maxProperties?: number
   patternProperties?: Record<string, JsonSchema>
   propertyNames?: JsonSchema
-  
+
   // Conditional
   if?: JsonSchema
   then?: JsonSchema
   else?: JsonSchema
-  
+
   // Composition
   allOf?: JsonSchema[]
   anyOf?: JsonSchema[]
   oneOf?: JsonSchema[]
   not?: JsonSchema
-  
+
   // Generic
   title?: string
   description?: string
@@ -55,14 +55,14 @@ export interface JsonSchemaObject {
   examples?: any[]
   const?: any
   enum?: any[]
-  
+
   // Nullable
   nullable?: boolean
 }
 
 export type JsonSchema = JsonSchemaObject | boolean
 
-export type JsonSchemaType = 
+export type JsonSchemaType =
   | 'null'
   | 'boolean'
   | 'object'

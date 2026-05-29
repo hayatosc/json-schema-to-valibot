@@ -1,21 +1,32 @@
 {
   "name": "json-schema-to-valibot",
-  "type": "module",
   "version": "0.3.1",
   "description": "Convert JSON Schema definitions to Valibot schema definitions. Inspired by json-schema-to-zod.",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
-  "bin": {
-    "json-schema-to-valibot": "dist/cli.cjs"
-  },
+  "keywords": [
+    "cli",
+    "converter",
+    "json-schema",
+    "schema",
+    "typescript",
+    "valibot",
+    "validation"
+  ],
+  "license": "MIT",
+  "author": "hayatosc",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hayatosc/json-schema-to-valibot.git"
   },
+  "bin": {
+    "json-schema-to-valibot": "dist/cli.cjs"
+  },
   "files": [
     "dist"
   ],
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsdown",
     "dev": "tsx src/cli.ts",
@@ -24,30 +35,20 @@
     "test:e2e": "pnpm build && vitest end-to-end.test.ts",
     "test:suite": "pnpm build && tsx script/test-suite-runner.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.tsx",
-    "lint:fix": "eslint src --ext .ts,.tsx --fix"
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check ."
   },
-  "keywords": [
-    "json-schema",
-    "valibot",
-    "schema",
-    "validation",
-    "converter",
-    "cli",
-    "typescript"
-  ],
-  "author": "hayatosc",
-  "license": "MIT",
   "dependencies": {
     "citty": "^0.1.6",
     "valibot": "1.1.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.18.0",
     "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^8.18.2",
-    "@typescript-eslint/parser": "^8.18.2",
-    "eslint": "^9.18.0",
+    "oxfmt": "^0.52.0",
+    "oxlint": "^1.67.0",
+    "oxlint-tsgolint": "^0.23.0",
     "tsdown": "0.12.9",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",

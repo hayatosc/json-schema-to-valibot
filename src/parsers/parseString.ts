@@ -3,24 +3,24 @@ import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../
 export function parseString(schema: JsonSchemaObject, _context: ParserContext): ParseResult {
   const imports = new Set(['string'])
   const constraints: string[] = []
-  
+
   // Add length constraints
   if (typeof schema.minLength === 'number') {
     constraints.push(`v.minLength(${schema.minLength})`)
     imports.add('minLength')
   }
-  
+
   if (typeof schema.maxLength === 'number') {
     constraints.push(`v.maxLength(${schema.maxLength})`)
     imports.add('maxLength')
   }
-  
+
   // Add pattern constraint
   if (schema.pattern) {
     constraints.push(`v.regex(/${schema.pattern}/)`)
     imports.add('regex')
   }
-  
+
   // Add format constraints
   if (schema.format) {
     switch (schema.format) {
@@ -62,19 +62,18 @@ export function parseString(schema: JsonSchemaObject, _context: ParserContext): 
         break
     }
   }
-  
+
   // Build the schema string
-  const schemaStr = constraints.length > 0 
-    ? `v.pipe(v.string(), ${constraints.join(', ')})`
-    : 'v.string()'
-  
+  const schemaStr =
+    constraints.length > 0 ? `v.pipe(v.string(), ${constraints.join(', ')})` : 'v.string()'
+
   if (constraints.length > 0) {
     imports.add('pipe')
   }
-  
+
   return {
     schema: schemaStr,
     imports,
-    types: 'string'
+    types: 'string',
   }
 }

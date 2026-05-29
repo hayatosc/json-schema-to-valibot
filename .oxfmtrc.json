@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "semi": false,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "quoteProps": "as-needed",
+  "printWidth": 100,
+  "sortImports": true,
+  "ignorePatterns": ["dist/**", "node_modules/**", "json-schema-test-suite/**"]
+}

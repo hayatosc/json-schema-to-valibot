@@ -1,0 +1,45 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "options": {
+    "typeAware": true
+  },
+  "categories": {
+    "correctness": "error"
+  },
+  "ignorePatterns": ["dist/**", "node_modules/**", "json-schema-test-suite/**"],
+  "rules": {
+    "oxc/only-used-in-recursion": "off",
+    "typescript/no-explicit-any": "off",
+    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports",
+        "fixStyle": "separate-type-imports",
+        "disallowTypeAnnotations": true
+      }
+    ],
+    "typescript/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/no-floating-promises": "error",
+    "typescript/switch-exhaustiveness-check": [
+      "warn",
+      {
+        "allowDefaultCaseForExhaustiveSwitch": true,
+        "considerDefaultExhaustiveForUnions": false,
+        "requireDefaultForNonUnion": false
+      }
+    ],
+    "typescript/consistent-type-assertions": "warn",
+    "typescript/no-non-null-assertion": "warn"
+  },
+  "env": {
+    "builtin": true
+  }
+}
