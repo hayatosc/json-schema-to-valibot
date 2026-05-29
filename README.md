@@ -101,7 +101,7 @@ console.log(valibotCode)
 - `url`/`uri` → `v.url()`
 - `uuid` → `v.uuid()`
 - `date` → `v.isoDate()`
-- `date-time` → `v.isoDateTime()`
+- `date-time` → `v.isoTimestamp()`
 - `time` → `v.isoTime()`
 - `ipv4` → `v.ipv4()`
 - `ipv6` → `v.ipv6()`

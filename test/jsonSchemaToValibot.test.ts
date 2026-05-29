@@ -22,6 +22,23 @@ describe('jsonSchemaToValibot', () => {
     expect(result).toContain('v.pipe(v.string(), v.minLength(5), v.maxLength(100), v.regex(/^[a-z]+$/))');
   });
 
+  it('should convert string format to corresponding valibot action', () => {
+    const cases: Array<[string, string]> = [
+      ['email', 'v.email()'],
+      ['uuid', 'v.uuid()'],
+      ['date', 'v.isoDate()'],
+      ['date-time', 'v.isoTimestamp()'],
+      ['time', 'v.isoTime()'],
+      ['ipv4', 'v.ipv4()'],
+      ['ipv6', 'v.ipv6()'],
+    ];
+
+    for (const [format, action] of cases) {
+      const result = jsonSchemaToValibot({ type: 'string' as const, format });
+      expect(result).toContain(`v.pipe(v.string(), ${action})`);
+    }
+  });
+
   it('should convert basic number schema', () => {
     const schema = { type: 'number' as const };
     const result = jsonSchemaToValibot(schema);
