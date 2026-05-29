@@ -18,7 +18,7 @@ describe('End-to-End CLI Tests', () => {
 
     try {
       // Generate schema using CLI
-      execSync(`node ./dist/cli.cjs -i example-schema.json -o ${testOutputFile}`, {
+      execSync(`node ./dist/cli.js -i example-schema.json -o ${testOutputFile}`, {
         encoding: 'utf8',
         stdio: 'pipe',
         timeout: 5000,
@@ -122,7 +122,7 @@ describe('End-to-End CLI Tests', () => {
       writeFileSync(recursiveSchemaFile, JSON.stringify(recursiveSchema, null, 2))
 
       // Generate schema using CLI
-      execSync(`node ./dist/cli.cjs -i ${recursiveSchemaFile} -o ${testOutputFile}`, {
+      execSync(`node ./dist/cli.js -i ${recursiveSchemaFile} -o ${testOutputFile}`, {
         encoding: 'utf8',
         stdio: 'pipe',
         timeout: 5000,

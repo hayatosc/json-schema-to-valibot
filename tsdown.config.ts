@@ -1,18 +1,15 @@
 import { defineConfig } from 'tsdown'
 
-export default [
-  defineConfig({
-    entry: 'src/index.ts',
-    format: ['cjs', 'esm'],
-    outDir: 'dist',
-    external: ['valibot'],
-    dts: true,
-  }),
-  defineConfig({
-    entry: 'src/cli.ts',
-    format: ['cjs'],
-    outDir: 'dist',
-    external: ['valibot', 'citty'],
-    dts: true,
-  }),
-]
+export default defineConfig({
+  entry: {
+    index: 'src/index.ts',
+    cli: 'src/cli.ts',
+  },
+  format: ['esm'],
+  outDir: 'dist',
+  clean: true,
+  dts: { entry: 'src/index.ts' },
+  sourcemap: true,
+  publint: true,
+  external: ['valibot', 'citty'],
+})
