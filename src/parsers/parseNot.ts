@@ -5,11 +5,11 @@ export function parseNot(schema: JsonSchemaObject, context: ParserContext): Pars
   if (!schema.not) {
     return { schema: 'v.any()', imports: new Set(['any']) }
   }
-  
+
   // Parse the negated schema
   const notResult = parseSchema(schema.not, { ...context, depth: context.depth + 1 })
   const allImports = new Set(['custom', ...notResult.imports])
-  
+
   // Create a custom validation that negates the schema
   const customValidation = `v.custom((input) => {
     try {
@@ -19,10 +19,10 @@ export function parseNot(schema: JsonSchemaObject, context: ParserContext): Pars
       return true; // If parsing fails, validation succeeds
     }
   }, "Value must not match the specified schema")`
-  
+
   return {
     schema: customValidation,
     imports: allImports,
-    types: 'unknown' // Type cannot be determined for negation
+    types: 'unknown', // Type cannot be determined for negation
   }
 }

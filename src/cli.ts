@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 
-import { defineCommand, runMain } from 'citty'
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+
+import { defineCommand, runMain } from 'citty'
+
 import { jsonSchemaToValibot } from './jsonSchemaToValibot'
 import type { JsonSchema, ConversionOptions } from './types'
 
@@ -10,58 +12,58 @@ const main = defineCommand({
   meta: {
     name: 'json-schema-to-valibot',
     version: '0.1.0',
-    description: 'Convert JSON Schema definitions to Valibot schema definitions'
+    description: 'Convert JSON Schema definitions to Valibot schema definitions',
   },
   args: {
     input: {
       type: 'string',
       description: 'Input JSON Schema file path or JSON string',
-      alias: 'i'
+      alias: 'i',
     },
     output: {
       type: 'string',
       description: 'Output file path (defaults to stdout)',
-      alias: 'o'
+      alias: 'o',
     },
     name: {
       type: 'string',
       description: 'Schema name in output',
       alias: 'n',
-      default: 'schema'
+      default: 'schema',
     },
     module: {
       type: 'string',
       description: 'Module system (esm, cjs, none)',
       alias: 'm',
-      default: 'esm'
+      default: 'esm',
     },
     types: {
       type: 'boolean',
       description: 'Generate TypeScript type exports',
       alias: 't',
-      default: false
+      default: false,
     },
     jsdoc: {
       type: 'boolean',
       description: 'Include JSDoc comments',
       alias: 'd',
-      default: false
+      default: false,
     },
     depth: {
       type: 'string',
       description: 'Maximum recursion depth',
-      default: '10'
+      default: '10',
     },
     'export-definitions': {
       type: 'boolean',
       description: 'Export schema definitions',
-      default: true
-    }
+      default: true,
+    },
   },
   async run({ args }) {
     try {
       let schemaInput: string
-      
+
       // Read input
       if (args.input) {
         if (args.input.startsWith('{') || args.input.startsWith('[')) {
@@ -76,7 +78,7 @@ const main = defineCommand({
         // Read from stdin
         schemaInput = await readStdin()
       }
-      
+
       // Parse JSON Schema
       let jsonSchema: JsonSchema
       try {
@@ -85,27 +87,27 @@ const main = defineCommand({
         console.error('Error parsing JSON Schema:', error)
         process.exit(1)
       }
-      
+
       // Validate module option
-      if (!['esm', 'cjs', 'none'].includes(args.module)) {
+      const moduleArg = args.module
+      if (moduleArg !== 'esm' && moduleArg !== 'cjs' && moduleArg !== 'none') {
         console.error('Module must be one of: esm, cjs, none')
         process.exit(1)
       }
-      
+
       // Build conversion options
       const options: ConversionOptions = {
         name: args.name,
-        module: args.module as 'esm' | 'cjs' | 'none',
+        module: moduleArg,
         withTypes: args.types,
         withJsDoc: args.jsdoc,
         maxDepth: parseInt(args.depth, 10),
-        exportDefinitions: args['export-definitions']
+        exportDefinitions: args['export-definitions'],
       }
-      
-      
+
       // Convert schema
       const valibotCode = jsonSchemaToValibot(jsonSchema, options)
-      
+
       // Output result
       if (args.output) {
         const outputPath = resolve(args.output)
@@ -114,33 +116,32 @@ const main = defineCommand({
       } else {
         console.log(valibotCode)
       }
-      
     } catch (error) {
       console.error('Error:', error)
       process.exit(1)
     }
-  }
+  },
 })
 
 async function readStdin(): Promise<string> {
   return new Promise((resolve, reject) => {
     let data = ''
-    
+
     process.stdin.setEncoding('utf8')
-    
+
     process.stdin.on('readable', () => {
       let chunk
       while ((chunk = process.stdin.read()) !== null) {
         data += chunk
       }
     })
-    
+
     process.stdin.on('end', () => {
       resolve(data.trim())
     })
-    
+
     process.stdin.on('error', reject)
   })
 }
 
-runMain(main)
+void runMain(main)

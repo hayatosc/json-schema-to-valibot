@@ -1,14 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { jsonSchemaToValibot } from '../src/jsonSchemaToValibot';
+import { describe, expect, it } from 'vitest'
+
+import { jsonSchemaToValibot } from '../src/jsonSchemaToValibot'
 
 describe('jsonSchemaToValibot', () => {
   it('should convert basic string schema', () => {
-    const schema = { type: 'string' as const };
-    const result = jsonSchemaToValibot(schema);
+    const schema = { type: 'string' as const }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain("import * as v from 'valibot'");
-    expect(result).toContain('const schema = v.string()');
-  });
+    expect(result).toContain("import * as v from 'valibot'")
+    expect(result).toContain('const schema = v.string()')
+  })
 
   it('should convert string with constraints', () => {
     const schema = {
@@ -16,11 +17,13 @@ describe('jsonSchemaToValibot', () => {
       minLength: 5,
       maxLength: 100,
       pattern: '^[a-z]+$',
-    };
-    const result = jsonSchemaToValibot(schema);
+    }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('v.pipe(v.string(), v.minLength(5), v.maxLength(100), v.regex(/^[a-z]+$/))');
-  });
+    expect(result).toContain(
+      'v.pipe(v.string(), v.minLength(5), v.maxLength(100), v.regex(/^[a-z]+$/))',
+    )
+  })
 
   it('should convert string format to corresponding valibot action', () => {
     const cases: Array<[string, string]> = [
@@ -31,48 +34,48 @@ describe('jsonSchemaToValibot', () => {
       ['time', 'v.isoTime()'],
       ['ipv4', 'v.ipv4()'],
       ['ipv6', 'v.ipv6()'],
-    ];
+    ]
 
     for (const [format, action] of cases) {
-      const result = jsonSchemaToValibot({ type: 'string' as const, format });
-      expect(result).toContain(`v.pipe(v.string(), ${action})`);
+      const result = jsonSchemaToValibot({ type: 'string' as const, format })
+      expect(result).toContain(`v.pipe(v.string(), ${action})`)
     }
-  });
+  })
 
   it('should convert basic number schema', () => {
-    const schema = { type: 'number' as const };
-    const result = jsonSchemaToValibot(schema);
+    const schema = { type: 'number' as const }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('const schema = v.number()');
-  });
+    expect(result).toContain('const schema = v.number()')
+  })
 
   it('should convert integer with constraints', () => {
     const schema = {
       type: 'integer' as const,
       minimum: 0,
       maximum: 100,
-    };
-    const result = jsonSchemaToValibot(schema);
+    }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('v.pipe(v.number(), v.minValue(0), v.maxValue(100))');
-  });
+    expect(result).toContain('v.pipe(v.number(), v.minValue(0), v.maxValue(100))')
+  })
 
   it('should convert boolean schema', () => {
-    const schema = { type: 'boolean' as const };
-    const result = jsonSchemaToValibot(schema);
+    const schema = { type: 'boolean' as const }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('const schema = v.boolean()');
-  });
+    expect(result).toContain('const schema = v.boolean()')
+  })
 
   it('should convert array schema', () => {
     const schema = {
       type: 'array' as const,
       items: { type: 'string' as const },
-    };
-    const result = jsonSchemaToValibot(schema);
+    }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('v.array(v.string())');
-  });
+    expect(result).toContain('v.array(v.string())')
+  })
 
   it('should convert object schema', () => {
     const schema = {
@@ -82,64 +85,64 @@ describe('jsonSchemaToValibot', () => {
         age: { type: 'number' as const },
       },
       required: ['name'],
-    };
-    const result = jsonSchemaToValibot(schema);
+    }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('v.object({');
-    expect(result).toContain('"name": v.string()');
-    expect(result).toContain('"age": v.optional(v.number())');
-  });
+    expect(result).toContain('v.object({')
+    expect(result).toContain('"name": v.string()')
+    expect(result).toContain('"age": v.optional(v.number())')
+  })
 
   it('should convert enum schema', () => {
     const schema = {
       enum: ['red', 'green', 'blue'],
-    };
-    const result = jsonSchemaToValibot(schema);
+    }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('v.picklist(["red", "green", "blue"])');
-  });
+    expect(result).toContain('v.picklist(["red", "green", "blue"])')
+  })
 
   it('should convert const schema', () => {
     const schema = {
       const: 'hello',
-    };
-    const result = jsonSchemaToValibot(schema);
+    }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('v.literal("hello")');
-  });
+    expect(result).toContain('v.literal("hello")')
+  })
 
   it('should convert anyOf schema', () => {
     const schema = {
       anyOf: [{ type: 'string' as const }, { type: 'number' as const }],
-    };
-    const result = jsonSchemaToValibot(schema);
+    }
+    const result = jsonSchemaToValibot(schema)
 
-    expect(result).toContain('v.union([v.string(), v.number()])');
-  });
+    expect(result).toContain('v.union([v.string(), v.number()])')
+  })
 
   it('should handle custom schema name', () => {
-    const schema = { type: 'string' as const };
-    const result = jsonSchemaToValibot(schema, { name: 'customSchema' });
+    const schema = { type: 'string' as const }
+    const result = jsonSchemaToValibot(schema, { name: 'customSchema' })
 
-    expect(result).toContain('const customSchema = v.string()');
-  });
+    expect(result).toContain('const customSchema = v.string()')
+  })
 
   it('should handle CommonJS module format', () => {
-    const schema = { type: 'string' as const };
-    const result = jsonSchemaToValibot(schema, { module: 'cjs' });
+    const schema = { type: 'string' as const }
+    const result = jsonSchemaToValibot(schema, { module: 'cjs' })
 
-    expect(result).toContain("const v = require('valibot')");
-    expect(result).toContain('module.exports = { schema }');
-  });
+    expect(result).toContain("const v = require('valibot')")
+    expect(result).toContain('module.exports = { schema }')
+  })
 
   it('should handle no module format', () => {
-    const schema = { type: 'string' as const };
-    const result = jsonSchemaToValibot(schema, { module: 'none' });
+    const schema = { type: 'string' as const }
+    const result = jsonSchemaToValibot(schema, { module: 'none' })
 
-    expect(result).not.toContain('import');
-    expect(result).not.toContain('require');
-    expect(result).toContain('const schema = v.string()');
-  });
+    expect(result).not.toContain('import')
+    expect(result).not.toContain('require')
+    expect(result).toContain('const schema = v.string()')
+  })
 
   // New tests for PR #5 features
   describe('$ref resolution', () => {
@@ -159,20 +162,20 @@ describe('jsonSchemaToValibot', () => {
             required: ['name'],
           },
         },
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should generate a constant for the User definition
-      expect(result).toContain('export const User = v.object({');
-      expect(result).toContain('"name": v.string()');
-      expect(result).toContain('"age": v.optional(v.number())');
-      
+      expect(result).toContain('export const User = v.object({')
+      expect(result).toContain('"name": v.string()')
+      expect(result).toContain('"age": v.optional(v.number())')
+
       // Should reference the User constant in the main schema
-      expect(result).toContain('"user": v.optional(User)');
-      
+      expect(result).toContain('"user": v.optional(User)')
+
       // Should export the User definition by default
-      expect(result).toContain('export const User = v.object({');
-    });
+      expect(result).toContain('export const User = v.object({')
+    })
 
     it('should resolve local $ref to $defs', () => {
       const schema = {
@@ -188,16 +191,16 @@ describe('jsonSchemaToValibot', () => {
             },
           },
         },
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should generate a constant for the Profile definition
-      expect(result).toContain('export const Profile = v.object({');
-      expect(result).toContain('"bio": v.optional(v.string())');
-      
+      expect(result).toContain('export const Profile = v.object({')
+      expect(result).toContain('"bio": v.optional(v.string())')
+
       // Should reference the Profile constant
-      expect(result).toContain('"profile": v.optional(Profile)');
-    });
+      expect(result).toContain('"profile": v.optional(Profile)')
+    })
 
     it('should handle circular $ref dependencies', () => {
       const schema = {
@@ -214,17 +217,17 @@ describe('jsonSchemaToValibot', () => {
             },
           },
         },
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should generate the Node definition with type annotation for recursion
-      expect(result).toContain('export type Node = { value?: string; child?: Node };');
-      expect(result).toContain('export const NodeSchema: v.GenericSchema<Node> = v.object({');
-      expect(result).toContain('"value": v.optional(v.string())');
-      
+      expect(result).toContain('export type Node = { value?: string; child?: Node };')
+      expect(result).toContain('export const NodeSchema: v.GenericSchema<Node> = v.object({')
+      expect(result).toContain('"value": v.optional(v.string())')
+
       // Should handle circular reference with v.lazy()
-      expect(result).toContain('"child": v.optional(v.lazy(() => NodeSchema))');  
-    });
+      expect(result).toContain('"child": v.optional(v.lazy(() => NodeSchema))')
+    })
 
     it('should handle more complex recursive schemas (binary tree)', () => {
       const schema = {
@@ -237,33 +240,31 @@ describe('jsonSchemaToValibot', () => {
             type: 'object' as const,
             properties: {
               value: { type: 'number' as const },
-              left: { 
-                anyOf: [
-                  { $ref: '#/definitions/BinaryTree' },
-                  { type: 'null' as const }
-                ]
+              left: {
+                anyOf: [{ $ref: '#/definitions/BinaryTree' }, { type: 'null' as const }],
               },
-              right: { 
-                anyOf: [
-                  { $ref: '#/definitions/BinaryTree' },
-                  { type: 'null' as const }
-                ]
+              right: {
+                anyOf: [{ $ref: '#/definitions/BinaryTree' }, { type: 'null' as const }],
               },
             },
-            required: ['value']
+            required: ['value'],
           },
         },
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should generate the BinaryTree definition with type annotation for recursion
-      expect(result).toContain('export type BinaryTree = { value: number; left?: BinaryTree | null; right?: BinaryTree | null };');
-      expect(result).toContain('export const BinaryTreeSchema: v.GenericSchema<BinaryTree> = v.object({');
-      expect(result).toContain('"value": v.number()');
-      
+      expect(result).toContain(
+        'export type BinaryTree = { value: number; left?: BinaryTree | null; right?: BinaryTree | null };',
+      )
+      expect(result).toContain(
+        'export const BinaryTreeSchema: v.GenericSchema<BinaryTree> = v.object({',
+      )
+      expect(result).toContain('"value": v.number()')
+
       // Should handle recursive references in left and right with v.lazy()
-      expect(result).toContain('v.lazy(() => BinaryTreeSchema)');
-    });
+      expect(result).toContain('v.lazy(() => BinaryTreeSchema)')
+    })
 
     it('should generate proper TypeScript types for recursive schemas', () => {
       const schema = {
@@ -280,27 +281,31 @@ describe('jsonSchemaToValibot', () => {
               { type: 'null' as const },
               {
                 type: 'object' as const,
-                additionalProperties: { $ref: '#/definitions/JsonValue' }
+                additionalProperties: { $ref: '#/definitions/JsonValue' },
               },
               {
                 type: 'array' as const,
-                items: { $ref: '#/definitions/JsonValue' }
-              }
-            ]
+                items: { $ref: '#/definitions/JsonValue' },
+              },
+            ],
           },
         },
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should generate recursive JSON value schema with type annotation
-      expect(result).toContain('export type JsonValue = string | number | boolean | null | Record<string, any> | JsonValue[];');
-      expect(result).toContain('export const JsonValueSchema: v.GenericSchema<JsonValue> = v.union([');
-      expect(result).toContain('v.lazy(() => JsonValueSchema)');
-      expect(result).toContain('v.string()');
-      expect(result).toContain('v.number()');
-      expect(result).toContain('v.boolean()');
-      expect(result).toContain('v.null_()');
-    });
+      expect(result).toContain(
+        'export type JsonValue = string | number | boolean | null | Record<string, any> | JsonValue[];',
+      )
+      expect(result).toContain(
+        'export const JsonValueSchema: v.GenericSchema<JsonValue> = v.union([',
+      )
+      expect(result).toContain('v.lazy(() => JsonValueSchema)')
+      expect(result).toContain('v.string()')
+      expect(result).toContain('v.number()')
+      expect(result).toContain('v.boolean()')
+      expect(result).toContain('v.null_()')
+    })
 
     it('should not export definitions when exportDefinitions is false', () => {
       const schema = {
@@ -316,16 +321,16 @@ describe('jsonSchemaToValibot', () => {
             },
           },
         },
-      };
-      const result = jsonSchemaToValibot(schema, { exportDefinitions: false });
+      }
+      const result = jsonSchemaToValibot(schema, { exportDefinitions: false })
 
       // Should not export the User definition
-      expect(result).toContain('const User = v.object({');
-      expect(result).not.toContain('export const User = v.object({');
-      
+      expect(result).toContain('const User = v.object({')
+      expect(result).not.toContain('export const User = v.object({')
+
       // Should still reference the User constant
-      expect(result).toContain('"user": v.optional(User)');
-    });
+      expect(result).toContain('"user": v.optional(User)')
+    })
 
     it('should export definitions by default', () => {
       const schema = {
@@ -341,14 +346,14 @@ describe('jsonSchemaToValibot', () => {
             },
           },
         },
-      };
-      const result = jsonSchemaToValibot(schema); // No options = default behavior
+      }
+      const result = jsonSchemaToValibot(schema) // No options = default behavior
 
       // Should export the Profile definition by default
-      expect(result).toContain('export const Profile = v.object({');
-      expect(result).toContain('"profile": v.optional(Profile)');
-    });
-  });
+      expect(result).toContain('export const Profile = v.object({')
+      expect(result).toContain('"profile": v.optional(Profile)')
+    })
+  })
 
   describe('additionalProperties with properties', () => {
     it('should combine properties with additionalProperties schema using v.object with v.rest', () => {
@@ -362,15 +367,15 @@ describe('jsonSchemaToValibot', () => {
         additionalProperties: {
           type: 'string' as const,
         },
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should use v.object with additional properties (not v.rest but direct second parameter)
-      expect(result).toContain('v.object({');
-      expect(result).toContain('"name": v.string()');
-      expect(result).toContain('"age": v.optional(v.number())');
-      expect(result).toContain('}, v.string())'); // Based on actual output
-    });
+      expect(result).toContain('v.object({')
+      expect(result).toContain('"name": v.string()')
+      expect(result).toContain('"age": v.optional(v.number())')
+      expect(result).toContain('}, v.string())') // Based on actual output
+    })
 
     it('should handle additionalProperties: false with strictObject', () => {
       const schema = {
@@ -379,13 +384,13 @@ describe('jsonSchemaToValibot', () => {
           name: { type: 'string' as const },
         },
         additionalProperties: false,
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should use v.strictObject when additionalProperties is false
-      expect(result).toContain('v.strictObject({');
-      expect(result).toContain('"name": v.optional(v.string())');
-    });
+      expect(result).toContain('v.strictObject({')
+      expect(result).toContain('"name": v.optional(v.string())')
+    })
 
     it('should handle additionalProperties schema without properties using v.record', () => {
       const schema = {
@@ -393,12 +398,12 @@ describe('jsonSchemaToValibot', () => {
         additionalProperties: {
           type: 'number' as const,
         },
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should use v.record when only additionalProperties is specified
-      expect(result).toContain('v.record(v.number())'); // Based on actual output
-    });
+      expect(result).toContain('v.record(v.number())') // Based on actual output
+    })
 
     it('should handle complex additionalProperties with nested schema', () => {
       const schema = {
@@ -414,16 +419,15 @@ describe('jsonSchemaToValibot', () => {
             metadata: { type: 'object' as const },
           },
         },
-      };
-      const result = jsonSchemaToValibot(schema);
+      }
+      const result = jsonSchemaToValibot(schema)
 
       // Should combine properties with complex additionalProperties
-      expect(result).toContain('v.object({');
-      expect(result).toContain('"id": v.string()');
-      expect(result).toContain('}, v.object({'); // Based on actual output
-      expect(result).toContain('"value": v.optional(v.string())');
-      expect(result).toContain('"metadata": v.optional(v.object({}))'); 
-    });
-  });
-
-});
+      expect(result).toContain('v.object({')
+      expect(result).toContain('"id": v.string()')
+      expect(result).toContain('}, v.object({') // Based on actual output
+      expect(result).toContain('"value": v.optional(v.string())')
+      expect(result).toContain('"metadata": v.optional(v.object({}))')
+    })
+  })
+})

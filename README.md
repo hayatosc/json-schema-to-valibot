@@ -38,7 +38,7 @@ json-schema-to-valibot -i schema.json --name userSchema
 ### CLI Options
 
 - `-i, --input <path>` - Input JSON Schema file path or JSON string
-- `-o, --output <path>` - Output file path (defaults to stdout)  
+- `-o, --output <path>` - Output file path (defaults to stdout)
 - `-n, --name <name>` - Schema name in output (default: "schema")
 - `-m, --module <type>` - Module system: esm, cjs, none (default: "esm")
 - `-t, --types` - Generate TypeScript type exports
@@ -55,16 +55,16 @@ const schema = {
   type: 'object',
   properties: {
     name: { type: 'string', minLength: 1 },
-    age: { type: 'integer', minimum: 0 }
+    age: { type: 'integer', minimum: 0 },
   },
-  required: ['name']
+  required: ['name'],
 }
 
 const valibotCode = jsonSchemaToValibot(schema, {
   name: 'userSchema',
   module: 'esm',
   withTypes: true,
-  exportDefinitions: true // Control whether to export schema definitions
+  exportDefinitions: true, // Control whether to export schema definitions
 })
 
 console.log(valibotCode)
@@ -73,6 +73,7 @@ console.log(valibotCode)
 ## Supported JSON Schema Features
 
 ### Basic Types
+
 - `string` with constraints (minLength, maxLength, pattern, format)
 - `number`/`integer` with constraints (minimum, maximum, multipleOf)
 - `boolean`
@@ -80,7 +81,8 @@ console.log(valibotCode)
 - `array` with items, length constraints, uniqueItems
 - `object` with properties, required fields, additionalProperties
 
-### Advanced Features  
+### Advanced Features
+
 - `const` values → `v.literal()` for primitives, `v.object()`/`v.tuple()` for complex types
 - `enum` values → `v.picklist()` for primitives, `v.union()` for mixed types
 - `anyOf` → `v.union()`
@@ -91,12 +93,14 @@ console.log(valibotCode)
 - Boolean schemas → `true` becomes `v.any()`, `false` becomes `v.never()`
 
 ### References & Recursive Schemas
+
 - `$ref` → Resolves references to `definitions` and `$defs`
 - **Recursive schemas** → Uses `v.lazy()` for circular dependencies
 - **TypeScript types** → Generates proper TypeScript type definitions for recursive schemas
 - **Export control** → `exportDefinitions` option to control definition exports
 
 ### String Formats
+
 - `email` → `v.email()`
 - `url`/`uri` → `v.url()`
 - `uuid` → `v.uuid()`
@@ -109,6 +113,7 @@ console.log(valibotCode)
 ## Examples
 
 ### Input JSON Schema
+
 ```json
 {
   "type": "object",
@@ -119,7 +124,7 @@ console.log(valibotCode)
       "maxLength": 100
     },
     "email": {
-      "type": "string", 
+      "type": "string",
       "format": "email"
     },
     "age": {
@@ -138,20 +143,22 @@ console.log(valibotCode)
 ```
 
 ### Generated Valibot Schema
+
 ```typescript
 import * as v from 'valibot'
 
 export const schema = v.object({
-  "name": v.string([v.minLength(1), v.maxLength(100)]),
-  "email": v.string([v.email()]),
-  "age": v.optional(v.integer([v.minValue(0), v.maxValue(150)])),
-  "tags": v.optional(v.pipe(v.array(v.string()), v.unique()))
+  name: v.string([v.minLength(1), v.maxLength(100)]),
+  email: v.string([v.email()]),
+  age: v.optional(v.integer([v.minValue(0), v.maxValue(150)])),
+  tags: v.optional(v.pipe(v.array(v.string()), v.unique())),
 })
 ```
 
 ### Recursive Schema Example
 
 Input JSON Schema with recursive references:
+
 ```json
 {
   "type": "object",
@@ -164,16 +171,10 @@ Input JSON Schema with recursive references:
       "properties": {
         "value": { "type": "number" },
         "left": {
-          "anyOf": [
-            { "$ref": "#/definitions/BinaryTree" },
-            { "type": "null" }
-          ]
+          "anyOf": [{ "$ref": "#/definitions/BinaryTree" }, { "type": "null" }]
         },
         "right": {
-          "anyOf": [
-            { "$ref": "#/definitions/BinaryTree" },
-            { "type": "null" }
-          ]
+          "anyOf": [{ "$ref": "#/definitions/BinaryTree" }, { "type": "null" }]
         }
       },
       "required": ["value"]
@@ -183,23 +184,24 @@ Input JSON Schema with recursive references:
 ```
 
 Generated output with proper TypeScript types:
+
 ```typescript
 import * as v from 'valibot'
 
-export type BinaryTree = { 
-  value: number; 
-  left?: BinaryTree | null; 
-  right?: BinaryTree | null 
-};
+export type BinaryTree = {
+  value: number
+  left?: BinaryTree | null
+  right?: BinaryTree | null
+}
 
 export const BinaryTreeSchema: v.GenericSchema<BinaryTree> = v.object({
-  "value": v.number(),
-  "left": v.optional(v.union([v.lazy(() => BinaryTreeSchema), v.null_()])),
-  "right": v.optional(v.union([v.lazy(() => BinaryTreeSchema), v.null_()]))
-});
+  value: v.number(),
+  left: v.optional(v.union([v.lazy(() => BinaryTreeSchema), v.null_()])),
+  right: v.optional(v.union([v.lazy(() => BinaryTreeSchema), v.null_()])),
+})
 
 export const schema = v.object({
-  "tree": v.optional(BinaryTreeSchema)
+  tree: v.optional(BinaryTreeSchema),
 })
 ```
 

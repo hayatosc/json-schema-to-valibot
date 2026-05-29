@@ -4,6 +4,6 @@ export function parseBoolean(_schema: JsonSchemaObject, _context: ParserContext)
   return {
     schema: 'v.boolean()',
     imports: new Set(['boolean']),
-    types: 'boolean'
+    types: 'boolean',
   }
 }

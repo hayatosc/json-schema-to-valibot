@@ -1,16 +1,21 @@
-import { type JsonSchema, type JsonSchemaObject, type ParserContext, type ParseResult } from '../types'
-import { parseString } from './parseString'
-import { parseNumber } from './parseNumber'
-import { parseBoolean } from './parseBoolean'
-import { parseArray } from './parseArray'
-import { parseObject } from './parseObject'
-import { parseNull } from './parseNull'
-import { parseAnyOf } from './parseAnyOf'
+import {
+  type JsonSchema,
+  type JsonSchemaObject,
+  type ParserContext,
+  type ParseResult,
+} from '../types'
 import { parseAllOf } from './parseAllOf'
-import { parseOneOf } from './parseOneOf'
-import { parseNot } from './parseNot'
+import { parseAnyOf } from './parseAnyOf'
+import { parseArray } from './parseArray'
+import { parseBoolean } from './parseBoolean'
 import { parseConst } from './parseConst'
 import { parseEnum } from './parseEnum'
+import { parseNot } from './parseNot'
+import { parseNull } from './parseNull'
+import { parseNumber } from './parseNumber'
+import { parseObject } from './parseObject'
+import { parseOneOf } from './parseOneOf'
+import { parseString } from './parseString'
 
 export function parseSchema(schema: JsonSchema, context: ParserContext): ParseResult {
   // Prevent infinite recursion
@@ -48,7 +53,7 @@ export function parseSchema(schema: JsonSchema, context: ParserContext): ParseRe
     return {
       schema: `v.nullable(${baseResult.schema})`,
       imports: new Set([...baseResult.imports, 'nullable']),
-      types: baseResult.types ? `${baseResult.types} | null` : undefined
+      types: baseResult.types ? `${baseResult.types} | null` : undefined,
     }
   }
 
@@ -60,15 +65,15 @@ function parseSchemaType(schema: JsonSchemaObject, context: ParserContext): Pars
 
   if (Array.isArray(type)) {
     // Multiple types - create a union
-    const results = type.map(t => parseSchema({ ...schema, type: t }, context))
-    const schemas = results.map(r => r.schema)
+    const results = type.map((t) => parseSchema({ ...schema, type: t }, context))
+    const schemas = results.map((r) => r.schema)
     const allImports = new Set<string>()
-    results.forEach(r => r.imports.forEach(imp => allImports.add(imp)))
+    results.forEach((r) => r.imports.forEach((imp) => allImports.add(imp)))
     allImports.add('union')
 
     return {
       schema: `v.union([${schemas.join(', ')}])`,
-      imports: allImports
+      imports: allImports,
     }
   }
 
@@ -86,6 +91,7 @@ function parseSchemaType(schema: JsonSchemaObject, context: ParserContext): Pars
       return parseObject(schema, context)
     case 'null':
       return parseNull(schema, context)
+    case undefined:
     default:
       // No type specified or unknown type
       return { schema: 'v.any()', imports: new Set(['any']) }
@@ -100,10 +106,12 @@ function handleRef(ref: string, context: ParserContext): ParseResult {
     if (refData.isProcessing) {
       console.warn(`Circular dependency detected for ${ref}. Using v.lazy() for proper recursion.`)
       // Mark as recursive for proper type annotation
-      refData.isRecursive = true;
+      refData.isRecursive = true
       // Use v.lazy() for proper recursive schema support
       // For recursive schemas, reference the schema (not the type)
-      const schemaReference = refData.isRecursive ? `${refData.schemaName}Schema` : refData.schemaName;
+      const schemaReference = refData.isRecursive
+        ? `${refData.schemaName}Schema`
+        : refData.schemaName
       return { schema: `v.lazy(() => ${schemaReference})`, imports: new Set(['lazy']) }
     }
     // If the code for this ref has already been generated (e.g. processing nested refs within a definition),
@@ -111,7 +119,7 @@ function handleRef(ref: string, context: ParserContext): ParseResult {
     // However, the primary generation of definition code happens in jsonSchemaToValibot.ts.
     // Here, we just need to return the schemaName so it's used in the referencing schema.
     // For recursive schemas, always use the Schema suffix for consistency
-    const schemaReference = refData.isRecursive ? `${refData.schemaName}Schema` : refData.schemaName;
+    const schemaReference = refData.isRecursive ? `${refData.schemaName}Schema` : refData.schemaName
     return { schema: schemaReference, imports: new Set() } // Imports for the definition itself are handled when it's declared.
   }
 

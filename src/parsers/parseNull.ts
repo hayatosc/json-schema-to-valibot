@@ -4,6 +4,6 @@ export function parseNull(_schema: JsonSchemaObject, _context: ParserContext): P
   return {
     schema: 'v.null_()',
     imports: new Set(['null_']),
-    types: 'null'
+    types: 'null',
   }
 }
