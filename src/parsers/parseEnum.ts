@@ -2,8 +2,13 @@ import { type JsonSchemaObject, type ParserContext, type ParseResult } from '../
 import { parseConst } from './parseConst'
 
 export function parseEnum(schema: JsonSchemaObject, context: ParserContext): ParseResult {
-  if (!schema.enum || schema.enum.length === 0) {
+  if (!schema.enum) {
     return { schema: 'v.any()', imports: new Set(['any']) }
+  }
+
+  // An empty enum matches no value, so nothing is valid.
+  if (schema.enum.length === 0) {
+    return { schema: 'v.never()', imports: new Set(['never']) }
   }
 
   // Check if all enum values are primitives

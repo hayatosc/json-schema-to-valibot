@@ -10,7 +10,6 @@
   "ignorePatterns": ["dist/**", "node_modules/**", "json-schema-test-suite/**"],
   "rules": {
     "oxc/only-used-in-recursion": "off",
-    "typescript/no-explicit-any": "off",
     "typescript/no-unsafe-type-assertion": "error",
     "typescript/no-unnecessary-type-assertion": "error",
     "typescript/consistent-type-imports": [

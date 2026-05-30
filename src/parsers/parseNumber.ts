@@ -17,22 +17,22 @@ export function parseNumber(schema: JsonSchemaObject, _context: ParserContext): 
     imports.add('maxValue')
   }
 
-  // Add exclusive minimum constraint
+  // Add exclusive minimum constraint (gtValue enforces strict greater-than)
   if (typeof schema.exclusiveMinimum === 'number') {
-    constraints.push(`v.minValue(${schema.exclusiveMinimum}, { exclusive: true })`)
-    imports.add('minValue')
+    constraints.push(`v.gtValue(${schema.exclusiveMinimum})`)
+    imports.add('gtValue')
   } else if (schema.exclusiveMinimum === true && typeof schema.minimum === 'number') {
-    constraints.push(`v.minValue(${schema.minimum}, { exclusive: true })`)
-    imports.add('minValue')
+    constraints.push(`v.gtValue(${schema.minimum})`)
+    imports.add('gtValue')
   }
 
-  // Add exclusive maximum constraint
+  // Add exclusive maximum constraint (ltValue enforces strict less-than)
   if (typeof schema.exclusiveMaximum === 'number') {
-    constraints.push(`v.maxValue(${schema.exclusiveMaximum}, { exclusive: true })`)
-    imports.add('maxValue')
+    constraints.push(`v.ltValue(${schema.exclusiveMaximum})`)
+    imports.add('ltValue')
   } else if (schema.exclusiveMaximum === true && typeof schema.maximum === 'number') {
-    constraints.push(`v.maxValue(${schema.maximum}, { exclusive: true })`)
-    imports.add('maxValue')
+    constraints.push(`v.ltValue(${schema.maximum})`)
+    imports.add('ltValue')
   }
 
   // Add multiple of constraint

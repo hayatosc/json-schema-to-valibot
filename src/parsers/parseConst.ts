@@ -37,10 +37,11 @@ export function parseConst(schema: JsonSchemaObject, context: ParserContext): Pa
     }
   }
 
-  // For objects, use object validation
+  // For objects, use strict object validation so a const matches only an
+  // object with exactly the same keys (extra properties make it unequal).
   if (typeof value === 'object' && value !== null) {
     const properties: string[] = []
-    const allImports = new Set(['object'])
+    const allImports = new Set(['strictObject'])
     const propertyTypes: string[] = []
 
     for (const [key, propValue] of Object.entries(value)) {
@@ -53,7 +54,7 @@ export function parseConst(schema: JsonSchemaObject, context: ParserContext): Pa
     }
 
     return {
-      schema: `v.object({ ${properties.join(', ')} })`,
+      schema: `v.strictObject({ ${properties.join(', ')} })`,
       imports: allImports,
       types: `{ ${propertyTypes.join(', ')} }`,
     }

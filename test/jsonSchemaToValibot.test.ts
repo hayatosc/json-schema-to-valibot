@@ -21,7 +21,7 @@ describe('jsonSchemaToValibot', () => {
     const result = jsonSchemaToValibot(schema)
 
     expect(result).toContain(
-      'v.pipe(v.string(), v.minLength(5), v.maxLength(100), v.regex(/^[a-z]+$/))',
+      'v.pipe(v.string(), v.minLength(5), v.maxLength(100), v.regex(/^[a-z]+$/u))',
     )
   })
 
@@ -356,7 +356,7 @@ describe('jsonSchemaToValibot', () => {
   })
 
   describe('additionalProperties with properties', () => {
-    it('should combine properties with additionalProperties schema using v.object with v.rest', () => {
+    it('should combine properties with additionalProperties schema using v.objectWithRest', () => {
       const schema = {
         type: 'object' as const,
         properties: {
@@ -370,11 +370,11 @@ describe('jsonSchemaToValibot', () => {
       }
       const result = jsonSchemaToValibot(schema)
 
-      // Should use v.object with additional properties (not v.rest but direct second parameter)
-      expect(result).toContain('v.object({')
+      // v.objectWithRest validates declared keys with the shape and other keys with the rest schema
+      expect(result).toContain('v.objectWithRest({')
       expect(result).toContain('"name": v.string()')
       expect(result).toContain('"age": v.optional(v.number())')
-      expect(result).toContain('}, v.string())') // Based on actual output
+      expect(result).toContain('}, v.string())')
     })
 
     it('should handle additionalProperties: false with strictObject', () => {
@@ -401,8 +401,8 @@ describe('jsonSchemaToValibot', () => {
       }
       const result = jsonSchemaToValibot(schema)
 
-      // Should use v.record when only additionalProperties is specified
-      expect(result).toContain('v.record(v.number())') // Based on actual output
+      // Should use v.record with an explicit string key schema when only additionalProperties is specified
+      expect(result).toContain('v.record(v.string(), v.number())')
     })
 
     it('should handle complex additionalProperties with nested schema', () => {

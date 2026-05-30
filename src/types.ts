@@ -23,6 +23,7 @@ export interface JsonSchemaObject {
 
   // Array
   items?: JsonSchema | JsonSchema[]
+  prefixItems?: JsonSchema[]
   additionalItems?: JsonSchema
   minItems?: number
   maxItems?: number
@@ -51,10 +52,10 @@ export interface JsonSchemaObject {
   // Generic
   title?: string
   description?: string
-  default?: any
-  examples?: any[]
-  const?: any
-  enum?: any[]
+  default?: unknown
+  examples?: unknown[]
+  const?: unknown
+  enum?: unknown[]
 
   // Nullable
   nullable?: boolean

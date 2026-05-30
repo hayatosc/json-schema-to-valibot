@@ -68,9 +68,9 @@ export function jsonSchemaToValibot(schema: JsonSchema, options: ConversionOptio
 
     if (typeof schemaToCheck === 'object' && schemaToCheck !== null) {
       // Check for $ref properties recursively
-      const checkForRefs = (obj: any): boolean => {
+      const checkForRefs = (obj: unknown): boolean => {
         if (typeof obj === 'object' && obj !== null) {
-          if (obj.$ref && typeof obj.$ref === 'string') {
+          if ('$ref' in obj && typeof obj.$ref === 'string') {
             if (processing.has(obj.$ref)) {
               return true // Circular dependency found
             }
@@ -114,11 +114,38 @@ export function jsonSchemaToValibot(schema: JsonSchema, options: ConversionOptio
   let definitionsOutput = ''
   const processedRefs = new Set<string>()
 
-  // Iteratively parse definitions to handle potential nested refs within definitions
-  // This is a simplified approach; a more robust solution might need to handle circular dependencies more explicitly
-  // by marking schemas as "processing" and resolving them in multiple passes if necessary.
-  for (const [refKey, refData] of context.refs) {
-    if (refData.generatedCode) continue // Already processed
+  // Emit definitions dependency-first so a non-recursive `const` is always
+  // declared before the definitions that reference it (avoids TDZ errors).
+  // Circular references are broken at runtime by v.lazy(), so cycles are safe
+  // to leave in their original order here.
+  const collectRefKeys = (value: unknown, out: Set<string>): void => {
+    if (value && typeof value === 'object') {
+      if ('$ref' in value && typeof value.$ref === 'string' && context.refs.has(value.$ref)) {
+        out.add(value.$ref)
+      }
+      for (const child of Object.values(value)) collectRefKeys(child, out)
+    }
+  }
+  const sortedRefKeys: string[] = []
+  const visitedRefKeys = new Set<string>()
+  const visitRefKey = (refKey: string): void => {
+    if (visitedRefKeys.has(refKey)) return
+    visitedRefKeys.add(refKey)
+    const refData = context.refs.get(refKey)
+    if (refData) {
+      const deps = new Set<string>()
+      collectRefKeys(refData.rawSchema, deps)
+      for (const dep of deps) {
+        if (dep !== refKey) visitRefKey(dep)
+      }
+      sortedRefKeys.push(refKey)
+    }
+  }
+  for (const refKey of context.refs.keys()) visitRefKey(refKey)
+
+  for (const refKey of sortedRefKeys) {
+    const refData = context.refs.get(refKey)
+    if (!refData || refData.generatedCode) continue // Missing or already processed
 
     // Basic circular dependency check
     if (refData.isProcessing) {

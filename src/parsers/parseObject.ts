@@ -41,6 +41,15 @@ export function parseObject(schema: JsonSchemaObject, context: ParserContext): P
     }
   })
 
+  // Required keys without a property schema must still be present with any value.
+  for (const key of required) {
+    if (!(key in properties)) {
+      propsEntries.push(`${JSON.stringify(key)}: v.unknown()`)
+      propertyTypes[key] = 'unknown'
+      allImports.add('unknown')
+    }
+  }
+
   const propsObject = propsEntries.length > 0 ? `{ ${propsEntries.join(', ')} }` : '{}'
 
   // Handle additionalProperties
@@ -63,18 +72,18 @@ export function parseObject(schema: JsonSchemaObject, context: ParserContext): P
     additionalResult.imports.forEach((imp) => allImports.add(imp))
 
     if (propsEntries.length > 0) {
-      // Both properties and additionalProperties (as schema) are defined
-      // Use v.object(shape, rest)
-      schemaStr = `v.object(${propsObject}, ${additionalResult.schema})`
-      // v.object is already in allImports by default or will be added.
-      // The 'rest' argument for v.object doesn't require a separate 'v.rest' import,
-      // it's a part of v.object's signature.
+      // Both properties and additionalProperties (as schema) are defined.
+      // v.objectWithRest validates declared keys with the shape and all other
+      // keys against the rest schema.
+      schemaStr = `v.objectWithRest(${propsObject}, ${additionalResult.schema})`
+      allImports.add('objectWithRest')
+      allImports.delete('object')
     } else {
-      // Only additionalProperties (as schema) is defined, no specific properties
-      // Use v.record(keyType, valueType) -> v.record(valueType) assuming string keys
-      // For JSON schema, keys are always strings.
-      schemaStr = `v.record(${additionalResult.schema})`
+      // Only additionalProperties (as schema) is defined, no specific properties.
+      // JSON Schema object keys are always strings, so use a string key schema.
+      schemaStr = `v.record(v.string(), ${additionalResult.schema})`
       allImports.add('record')
+      allImports.add('string')
       allImports.delete('object') // v.object might have been added by default
     }
   } else {
