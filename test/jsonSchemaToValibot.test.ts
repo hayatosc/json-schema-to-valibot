@@ -703,4 +703,136 @@ describe('jsonSchemaToValibot', () => {
       expect(await accepts(schema, { item: { sub: {} } })).toBe(false)
     })
   })
+
+  describe('generated output is a structurally valid Valibot schema', () => {
+    // The conversion must produce a real Valibot schema: the module imports
+    // cleanly, the export is a schema object (kind === 'schema'), and running it
+    // against arbitrary inputs never throws (a malformed schema would throw).
+    const cases: { name: string; schema: JsonSchema }[] = [
+      {
+        name: 'string with constraints and format',
+        schema: { type: 'string', minLength: 1, maxLength: 5, pattern: '^a+$' },
+      },
+      { name: 'string with email format', schema: { type: 'string', format: 'email' } },
+      {
+        name: 'number with all bounds',
+        schema: { type: 'number', minimum: 0, maximum: 10, multipleOf: 2 },
+      },
+      {
+        name: 'number with exclusive bounds',
+        schema: { type: 'number', exclusiveMinimum: 0, exclusiveMaximum: 10 },
+      },
+      { name: 'integer', schema: { type: 'integer' } },
+      { name: 'boolean', schema: { type: 'boolean' } },
+      { name: 'null', schema: { type: 'null' } },
+      {
+        name: 'array of strings with length and uniqueness',
+        schema: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          maxItems: 3,
+          uniqueItems: true,
+        },
+      },
+      {
+        name: 'tuple via prefixItems with no extra items',
+        schema: {
+          type: 'array',
+          prefixItems: [{ type: 'string' }, { type: 'number' }],
+          items: false,
+        },
+      },
+      {
+        name: 'tuple via prefixItems with rest schema',
+        schema: { type: 'array', prefixItems: [{ type: 'string' }], items: { type: 'number' } },
+      },
+      { name: 'empty tuple via items:false', schema: { type: 'array', items: false } },
+      {
+        name: 'object with required and optional props',
+        schema: {
+          type: 'object',
+          properties: { a: { type: 'string' }, b: { type: 'number' } },
+          required: ['a'],
+        },
+      },
+      {
+        name: 'object with additionalProperties:false',
+        schema: {
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          additionalProperties: false,
+        },
+      },
+      {
+        name: 'object with additionalProperties schema',
+        schema: {
+          type: 'object',
+          properties: { a: { type: 'string' } },
+          additionalProperties: { type: 'number' },
+        },
+      },
+      {
+        name: 'record via additionalProperties only',
+        schema: { type: 'object', additionalProperties: { type: 'boolean' } },
+      },
+      { name: 'object with required-only key', schema: { type: 'object', required: ['x'] } },
+      { name: 'enum of primitives', schema: { enum: ['a', 'b', 1, null] } },
+      { name: 'enum with complex values', schema: { enum: [{ a: 1 }, [1, 2]] } },
+      { name: 'empty enum', schema: { enum: [] } },
+      { name: 'const primitive', schema: { const: 'x' } },
+      { name: 'const array', schema: { const: [1, 'a'] } },
+      { name: 'const object', schema: { const: { a: 1 } } },
+      {
+        name: 'allOf of objects',
+        schema: {
+          allOf: [
+            { properties: { a: { type: 'number' } }, required: ['a'] },
+            { properties: { b: { type: 'string' } }, required: ['b'] },
+          ],
+        },
+      },
+      { name: 'anyOf', schema: { anyOf: [{ type: 'string' }, { type: 'number' }] } },
+      { name: 'oneOf', schema: { oneOf: [{ type: 'string' }, { type: 'number' }] } },
+      { name: 'not', schema: { not: { type: 'string' } } },
+      {
+        name: 'composition combined with base',
+        schema: {
+          properties: { a: { type: 'number' } },
+          required: ['a'],
+          allOf: [{ properties: { b: { type: 'string' } }, required: ['b'] }],
+        },
+      },
+      { name: 'nullable', schema: { type: 'string', nullable: true } },
+      { name: 'multiple types (union)', schema: { type: ['string', 'number'] } },
+      { name: 'boolean schema true', schema: true },
+      { name: 'boolean schema false', schema: false },
+      { name: 'type-less inferred object', schema: { properties: { a: { type: 'string' } } } },
+      { name: 'type-less inferred number', schema: { minimum: 1 } },
+      { name: 'type-less inferred array', schema: { items: { type: 'number' } } },
+      {
+        name: 'non-recursive $ref to definitions',
+        schema: {
+          type: 'object',
+          properties: { user: { $ref: '#/definitions/User' } },
+          definitions: { User: { type: 'object', properties: { name: { type: 'string' } } } },
+        },
+      },
+    ]
+
+    const sampleInputs: unknown[] = ['x', 1, true, null, [], {}, [1, 2], { a: 1 }]
+
+    it.each(cases)('produces a runnable schema for $name', async ({ schema }) => {
+      const compiled = await compile(schema)
+
+      // The export is an actual Valibot schema.
+      expect(compiled.kind).toBe('schema')
+
+      // Running it against arbitrary inputs returns a result and never throws.
+      for (const input of sampleInputs) {
+        expect(() => v.safeParse(compiled, input)).not.toThrow()
+        expect(typeof v.safeParse(compiled, input).success).toBe('boolean')
+      }
+    })
+  })
 })
