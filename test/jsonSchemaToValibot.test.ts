@@ -1,6 +1,35 @@
+import { unlinkSync, writeFileSync } from 'node:fs'
+import path from 'node:path'
+import { pathToFileURL } from 'node:url'
+
+import * as v from 'valibot'
 import { describe, expect, it } from 'vitest'
 
 import { jsonSchemaToValibot } from '../src/jsonSchemaToValibot'
+import type { JsonSchema } from '../src/types'
+
+// Compile a JSON Schema to a runnable Valibot schema so tests can assert the
+// actual validation behavior (not just the generated source string). The
+// generated module is written next to the package so `valibot` resolves, then
+// imported and removed (same approach as script/test-suite-runner.ts).
+async function compile(schema: JsonSchema): Promise<v.GenericSchema> {
+  const code = jsonSchemaToValibot(schema, { exportDefinitions: false })
+  const file = path.join(
+    process.cwd(),
+    `.compile-${Date.now()}-${Math.random().toString(36).slice(2)}.mjs`,
+  )
+  writeFileSync(file, code)
+  try {
+    const mod: { schema: v.GenericSchema } = await import(pathToFileURL(file).href)
+    return mod.schema
+  } finally {
+    unlinkSync(file)
+  }
+}
+
+async function accepts(schema: JsonSchema, data: unknown): Promise<boolean> {
+  return v.safeParse(await compile(schema), data).success
+}
 
 describe('jsonSchemaToValibot', () => {
   it('should convert basic string schema', () => {
@@ -423,11 +452,255 @@ describe('jsonSchemaToValibot', () => {
       const result = jsonSchemaToValibot(schema)
 
       // Should combine properties with complex additionalProperties
-      expect(result).toContain('v.object({')
+      expect(result).toContain('v.objectWithRest({')
       expect(result).toContain('"id": v.string()')
       expect(result).toContain('}, v.object({') // Based on actual output
       expect(result).toContain('"value": v.optional(v.string())')
       expect(result).toContain('"metadata": v.optional(v.object({}))')
+    })
+
+    it('should reject additional properties that violate the rest schema', async () => {
+      const schema = {
+        type: 'object' as const,
+        properties: { name: { type: 'string' as const } },
+        required: ['name'],
+        additionalProperties: { type: 'number' as const },
+      }
+
+      expect(await accepts(schema, { name: 'a', extra: 1 })).toBe(true)
+      expect(await accepts(schema, { name: 'a', extra: 'nope' })).toBe(false)
+    })
+
+    it('should validate record values when only additionalProperties is set', async () => {
+      const schema = {
+        type: 'object' as const,
+        additionalProperties: { type: 'number' as const },
+      }
+
+      expect(await accepts(schema, { a: 1, b: 2 })).toBe(true)
+      expect(await accepts(schema, { a: 'x' })).toBe(false)
+    })
+  })
+
+  describe('keyword-based type inference (no explicit type)', () => {
+    it('should infer number from numeric constraints', async () => {
+      const schema = { minimum: 1.1 }
+      const result = jsonSchemaToValibot(schema)
+
+      expect(result).toContain('v.pipe(v.number(), v.minValue(1.1))')
+      expect(await accepts(schema, 2)).toBe(true)
+      expect(await accepts(schema, 0.6)).toBe(false)
+    })
+
+    it('should infer string from string constraints', async () => {
+      const schema = { maxLength: 3 }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.pipe(v.string(), v.maxLength(3))')
+      expect(await accepts(schema, 'abc')).toBe(true)
+      expect(await accepts(schema, 'abcd')).toBe(false)
+    })
+
+    it('should infer array from array constraints', async () => {
+      const schema = { items: { type: 'number' as const } }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.array(v.number())')
+      expect(await accepts(schema, [1, 2])).toBe(true)
+      expect(await accepts(schema, ['x'])).toBe(false)
+    })
+
+    it('should infer object from object keywords', async () => {
+      const schema = {
+        properties: { foo: { type: 'integer' as const } },
+        required: ['foo'],
+      }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.object({')
+      expect(await accepts(schema, { foo: 1 })).toBe(true)
+      expect(await accepts(schema, { foo: 'x' })).toBe(false)
+      expect(await accepts(schema, {})).toBe(false)
+    })
+
+    it('should infer a union when keywords span multiple types', async () => {
+      const schema = { minLength: 1, minimum: 0 }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.union([')
+      expect(await accepts(schema, 'ab')).toBe(true)
+      expect(await accepts(schema, 5)).toBe(true)
+    })
+
+    it('should fall back to v.any() when no type can be inferred', async () => {
+      const result = jsonSchemaToValibot({})
+
+      expect(result).toContain('v.any()')
+    })
+  })
+
+  describe('composition combining', () => {
+    it('should intersect allOf object subschemas without explicit type', async () => {
+      const schema: JsonSchema = {
+        allOf: [
+          { properties: { a: { type: 'number' as const } }, required: ['a'] },
+          { properties: { b: { type: 'string' as const } }, required: ['b'] },
+        ],
+      }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.intersect([')
+      expect(await accepts(schema, { a: 1, b: 'x' })).toBe(true)
+      expect(await accepts(schema, { a: 1 })).toBe(false)
+      expect(await accepts(schema, { b: 'x' })).toBe(false)
+    })
+
+    it('should combine sibling base constraints with allOf', async () => {
+      const schema = {
+        properties: { bar: { type: 'integer' as const } },
+        required: ['bar'],
+        allOf: [{ properties: { foo: { type: 'string' as const } }, required: ['foo'] }],
+      }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.intersect([')
+      expect(await accepts(schema, { foo: 'x', bar: 1 })).toBe(true)
+      expect(await accepts(schema, { bar: 1 })).toBe(false)
+      expect(await accepts(schema, { foo: 'x' })).toBe(false)
+    })
+
+    it('should combine multiple composition keywords on one schema', async () => {
+      const schema = {
+        allOf: [{ multipleOf: 2 }],
+        anyOf: [{ multipleOf: 3 }],
+      }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.intersect([')
+      expect(await accepts(schema, 6)).toBe(true)
+      expect(await accepts(schema, 2)).toBe(false)
+    })
+  })
+
+  describe('numeric exclusive bounds', () => {
+    it('should use v.gtValue for exclusiveMinimum', async () => {
+      const schema = { type: 'number' as const, exclusiveMinimum: 1.1 }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.gtValue(1.1)')
+      expect(await accepts(schema, 1.1)).toBe(false)
+      expect(await accepts(schema, 1.2)).toBe(true)
+    })
+
+    it('should use v.ltValue for exclusiveMaximum', async () => {
+      const schema = { type: 'number' as const, exclusiveMaximum: 3 }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.ltValue(3)')
+      expect(await accepts(schema, 3)).toBe(false)
+      expect(await accepts(schema, 2)).toBe(true)
+    })
+  })
+
+  describe('array tuples', () => {
+    it('should map prefixItems to v.tupleWithRest allowing extra items', async () => {
+      const schema = {
+        type: 'array' as const,
+        prefixItems: [{ type: 'string' as const }, { type: 'number' as const }],
+      }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.tupleWithRest([v.string(), v.number()],')
+      expect(await accepts(schema, ['x', 1])).toBe(true)
+      expect(await accepts(schema, [1, 'x'])).toBe(false)
+      expect(await accepts(schema, ['x', 1, true])).toBe(true)
+    })
+
+    it('should map prefixItems with items:false to v.strictTuple', async () => {
+      const schema = {
+        type: 'array' as const,
+        prefixItems: [{ type: 'string' as const }],
+        items: false as const,
+      }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.strictTuple([v.string()])')
+      expect(await accepts(schema, ['x'])).toBe(true)
+      expect(await accepts(schema, ['x', 1])).toBe(false)
+    })
+
+    it('should map prefixItems with an items schema to v.tupleWithRest', async () => {
+      const schema = {
+        type: 'array' as const,
+        prefixItems: [{ type: 'string' as const }],
+        items: { type: 'number' as const },
+      }
+
+      expect(await accepts(schema, ['x', 1, 2])).toBe(true)
+      expect(await accepts(schema, ['x', 'y'])).toBe(false)
+    })
+
+    it('should map items:false to an empty strict tuple', async () => {
+      const schema = { type: 'array' as const, items: false as const }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.strictTuple([])')
+      expect(await accepts(schema, [])).toBe(true)
+      expect(await accepts(schema, [1])).toBe(false)
+    })
+  })
+
+  describe('enum and const edge cases', () => {
+    it('should convert an empty enum to v.never()', async () => {
+      const schema = { enum: [] }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.never()')
+      expect(await accepts(schema, 'anything')).toBe(false)
+      expect(await accepts(schema, null)).toBe(false)
+    })
+
+    it('should convert const objects to v.strictObject', async () => {
+      const schema = { const: { a: 1 } }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.strictObject({')
+      expect(await accepts(schema, { a: 1 })).toBe(true)
+      expect(await accepts(schema, { a: 1, b: 2 })).toBe(false)
+    })
+  })
+
+  describe('required keys without a property schema', () => {
+    it('should enforce presence of required keys via v.unknown()', async () => {
+      const schema = { type: 'object' as const, required: ['foo'] }
+
+      expect(jsonSchemaToValibot(schema)).toContain('"foo": v.unknown()')
+      expect(await accepts(schema, { foo: 1 })).toBe(true)
+      expect(await accepts(schema, { foo: null })).toBe(true)
+      expect(await accepts(schema, {})).toBe(false)
+    })
+  })
+
+  describe('string pattern', () => {
+    it('should add the u flag so Unicode property escapes work', async () => {
+      const schema = { type: 'string' as const, pattern: '^\\p{Letter}+$' }
+
+      expect(jsonSchemaToValibot(schema)).toContain('/^\\p{Letter}+$/u')
+      expect(await accepts(schema, 'Hello')).toBe(true)
+      expect(await accepts(schema, '123')).toBe(false)
+    })
+  })
+
+  describe('definition ordering', () => {
+    it('should declare referenced definitions before their dependents', async () => {
+      const schema = {
+        type: 'object' as const,
+        properties: { item: { $ref: '#/$defs/item' } },
+        $defs: {
+          item: {
+            type: 'object' as const,
+            properties: { sub: { $ref: '#/$defs/subItem' } },
+            required: ['sub'],
+          },
+          subItem: {
+            type: 'object' as const,
+            properties: { foo: { type: 'string' as const } },
+            required: ['foo'],
+          },
+        },
+      }
+      const result = jsonSchemaToValibot(schema)
+
+      // subItem is referenced by item, so it must be declared first (no TDZ error).
+      expect(result.indexOf('const subItem')).toBeLessThan(result.indexOf('const item'))
+      expect(await accepts(schema, { item: { sub: { foo: 'x' } } })).toBe(true)
+      expect(await accepts(schema, { item: { sub: {} } })).toBe(false)
     })
   })
 })
