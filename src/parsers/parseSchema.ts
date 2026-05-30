@@ -100,26 +100,40 @@ function parseComposition(schema: JsonSchemaObject, context: ParserContext): Par
   if (schema.oneOf) parts.push(parseOneOf(schema, context))
   if (schema.not) parts.push(parseNot(schema, context))
 
-  // Sibling base constraints (e.g. `type`/`properties`) also have to hold.
+  // All sibling keywords also have to hold, so include them as intersect parts.
+  if (schema.const !== undefined) parts.push(parseConst(schema, context))
+  else if (schema.enum) parts.push(parseEnum(schema, context))
   if (schema.type !== undefined || inferTypesFromKeywords(schema).length > 0) {
     parts.push(parseSchemaType(schema, context))
   }
 
+  let result: ParseResult
   const [firstPart] = parts
-  if (parts.length === 1 && firstPart) return firstPart
-
-  const imports = new Set<string>(['intersect'])
-  const types: string[] = []
-  for (const part of parts) {
-    part.imports.forEach((imp) => imports.add(imp))
-    if (part.types) types.push(part.types)
+  if (parts.length === 1 && firstPart) {
+    result = firstPart
+  } else {
+    const imports = new Set<string>(['intersect'])
+    const types: string[] = []
+    for (const part of parts) {
+      part.imports.forEach((imp) => imports.add(imp))
+      if (part.types) types.push(part.types)
+    }
+    result = {
+      schema: `v.intersect([${parts.map((part) => part.schema).join(', ')}])`,
+      imports,
+      types: types.length > 0 ? types.join(' & ') : undefined,
+    }
   }
 
-  return {
-    schema: `v.intersect([${parts.map((part) => part.schema).join(', ')}])`,
-    imports,
-    types: types.length > 0 ? types.join(' & ') : undefined,
+  // A sibling `nullable` applies to the whole combined schema.
+  if (schema.nullable === true) {
+    return {
+      schema: `v.nullable(${result.schema})`,
+      imports: new Set([...result.imports, 'nullable']),
+      types: result.types ? `${result.types} | null` : undefined,
+    }
   }
+  return result
 }
 
 function parseSchemaType(schema: JsonSchemaObject, context: ParserContext): ParseResult {

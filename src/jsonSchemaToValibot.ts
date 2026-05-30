@@ -115,9 +115,10 @@ export function jsonSchemaToValibot(schema: JsonSchema, options: ConversionOptio
   const processedRefs = new Set<string>()
 
   // Emit definitions dependency-first so a non-recursive `const` is always
-  // declared before the definitions that reference it (avoids TDZ errors).
-  // Circular references are broken at runtime by v.lazy(), so cycles are safe
-  // to leave in their original order here.
+  // declared before the definitions that reference it (avoids TDZ errors for
+  // acyclic forward references). Reference cycles are not ordered away here;
+  // they rely on the existing recursion detection above, which wraps circular
+  // references in v.lazy().
   const collectRefKeys = (value: unknown, out: Set<string>): void => {
     if (value && typeof value === 'object') {
       if ('$ref' in value && typeof value.$ref === 'string' && context.refs.has(value.$ref)) {

@@ -42,8 +42,9 @@ export function parseObject(schema: JsonSchemaObject, context: ParserContext): P
   })
 
   // Required keys without a property schema must still be present with any value.
+  // Use an own-property check so inherited names (e.g. `toString`) aren't skipped.
   for (const key of required) {
-    if (!(key in properties)) {
+    if (!Object.hasOwn(properties, key)) {
       propsEntries.push(`${JSON.stringify(key)}: v.unknown()`)
       propertyTypes[key] = 'unknown'
       allImports.add('unknown')

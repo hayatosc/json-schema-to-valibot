@@ -8,7 +8,7 @@ export function parseEnum(schema: JsonSchemaObject, context: ParserContext): Par
 
   // An empty enum matches no value, so nothing is valid.
   if (schema.enum.length === 0) {
-    return { schema: 'v.never()', imports: new Set(['never']) }
+    return { schema: 'v.never()', imports: new Set(['never']), types: 'never' }
   }
 
   // Check if all enum values are primitives

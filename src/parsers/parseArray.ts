@@ -16,7 +16,7 @@ export function parseArray(schema: JsonSchemaObject, context: ParserContext): Pa
     const itemResults = prefix.map(parseSub)
     itemResults.forEach((r) => r.imports.forEach((imp) => allImports.add(imp)))
     const itemSchemas = itemResults.map((r) => r.schema)
-    baseType = `[${itemResults.map((r) => r.types || 'any').join(', ')}]`
+    const itemTypes = itemResults.map((r) => r.types || 'any')
 
     // What is allowed after the positional items: `items` (2020-12) or
     // `additionalItems` (legacy tuple form).
@@ -25,22 +25,30 @@ export function parseArray(schema: JsonSchemaObject, context: ParserContext): Pa
     if (rest === false) {
       // No items beyond the tuple positions are permitted (strict length).
       baseSchema = `v.strictTuple([${itemSchemas.join(', ')}])`
+      baseType = `[${itemTypes.join(', ')}]`
       allImports.add('strictTuple')
-    } else if (rest && typeof rest === 'object' && !Array.isArray(rest)) {
-      const restResult = parseSub(rest)
-      restResult.imports.forEach((imp) => allImports.add(imp))
-      baseSchema = `v.tupleWithRest([${itemSchemas.join(', ')}], ${restResult.schema})`
-      allImports.add('tupleWithRest')
     } else {
-      // Additional items are unconstrained (items true/undefined).
-      baseSchema = `v.tupleWithRest([${itemSchemas.join(', ')}], v.any())`
+      let restSchema = 'v.any()'
+      let restType = 'any'
+      if (rest && typeof rest === 'object' && !Array.isArray(rest)) {
+        const restResult = parseSub(rest)
+        restResult.imports.forEach((imp) => allImports.add(imp))
+        restSchema = restResult.schema
+        restType = restResult.types || 'any'
+      } else {
+        // Additional items are unconstrained (items true/undefined).
+        allImports.add('any')
+      }
+      baseSchema = `v.tupleWithRest([${itemSchemas.join(', ')}], ${restSchema})`
+      // A trailing rest widens the fixed tuple into a variadic tuple type.
+      baseType =
+        itemTypes.length > 0 ? `[${itemTypes.join(', ')}, ...${restType}[]]` : `${restType}[]`
       allImports.add('tupleWithRest')
-      allImports.add('any')
     }
   } else if (schema.items === false) {
     // `items: false` forbids any element, so only the empty array is valid.
     baseSchema = 'v.strictTuple([])'
-    baseType = 'never[]'
+    baseType = '[]'
     allImports.add('strictTuple')
   } else {
     // Regular array form: a single schema applied to every element.

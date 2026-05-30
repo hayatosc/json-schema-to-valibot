@@ -704,6 +704,71 @@ describe('jsonSchemaToValibot', () => {
     })
   })
 
+  describe('TypeScript type output for tuples', () => {
+    it('should emit a variadic tuple type for prefixItems with a rest schema', () => {
+      const schema = {
+        type: 'array' as const,
+        prefixItems: [{ type: 'string' as const }],
+        items: { type: 'number' as const },
+      }
+      const result = jsonSchemaToValibot(schema, { withTypes: true })
+
+      expect(result).toContain('type schemaType = [string, ...number[]]')
+    })
+
+    it('should emit an array type when there are no prefix items', () => {
+      const schema = {
+        type: 'array' as const,
+        prefixItems: [],
+        items: { type: 'number' as const },
+      }
+      const result = jsonSchemaToValibot(schema, { withTypes: true })
+
+      expect(result).toContain('type schemaType = number[]')
+    })
+
+    it('should emit an empty tuple type for items:false', () => {
+      const schema = { type: 'array' as const, items: false as const }
+      const result = jsonSchemaToValibot(schema, { withTypes: true })
+
+      expect(result).toContain('type schemaType = []')
+    })
+  })
+
+  describe('required keys with inherited names', () => {
+    it('should not skip a required key whose name is inherited from Object.prototype', () => {
+      const schema = { type: 'object' as const, required: ['toString'] }
+
+      // With a plain `key in properties` check this entry would be dropped
+      // because `toString` is inherited; the own-property check keeps it.
+      expect(jsonSchemaToValibot(schema)).toContain('"toString": v.unknown()')
+    })
+  })
+
+  describe('sibling keywords alongside composition', () => {
+    it('should apply nullable to a composed schema', async () => {
+      const schema: JsonSchema = {
+        allOf: [{ properties: { a: { type: 'number' as const } }, required: ['a'] }],
+        nullable: true,
+      }
+
+      expect(jsonSchemaToValibot(schema)).toContain('v.nullable(')
+      expect(await accepts(schema, null)).toBe(true)
+      expect(await accepts(schema, { a: 1 })).toBe(true)
+      expect(await accepts(schema, { a: 'x' })).toBe(false)
+    })
+
+    it('should intersect a sibling const with composition', async () => {
+      const schema: JsonSchema = {
+        allOf: [{ type: 'number' as const }],
+        const: 5,
+      }
+
+      expect(await accepts(schema, 5)).toBe(true)
+      expect(await accepts(schema, 6)).toBe(false)
+    })
+  })
+
   describe('generated output is a structurally valid Valibot schema', () => {
     // The conversion must produce a real Valibot schema: the module imports
     // cleanly, the export is a schema object (kind === 'schema'), and running it
