@@ -1,6 +1,7 @@
 import {
   type JsonSchema,
   type JsonSchemaObject,
+  type JsonSchemaType,
   type ParserContext,
   type ParseResult,
 } from '../types'
@@ -37,11 +38,11 @@ export function parseSchema(schema: JsonSchema, context: ParserContext): ParseRe
     return handleRef(schema.$ref, context)
   }
 
-  // Handle composition schemas first
-  if (schema.allOf) return parseAllOf(schema, context)
-  if (schema.anyOf) return parseAnyOf(schema, context)
-  if (schema.oneOf) return parseOneOf(schema, context)
-  if (schema.not) return parseNot(schema, context)
+  // Handle composition schemas. Multiple composition keywords and any sibling
+  // base constraints all apply at once, so combine them with v.intersect.
+  if (schema.allOf || schema.anyOf || schema.oneOf || schema.not) {
+    return parseComposition(schema, context)
+  }
 
   // Handle const and enum
   if (schema.const !== undefined) return parseConst(schema, context)
@@ -60,8 +61,94 @@ export function parseSchema(schema: JsonSchema, context: ParserContext): ParseRe
   return parseSchemaType(schema, context)
 }
 
+// Keywords that imply a specific instance type when `type` is omitted.
+// JSON Schema applies these keywords only to instances of the matching type,
+// so their presence is a reliable signal of the intended type.
+const TYPE_KEYWORDS: [JsonSchemaType, string[]][] = [
+  [
+    'object',
+    [
+      'properties',
+      'additionalProperties',
+      'required',
+      'patternProperties',
+      'propertyNames',
+      'minProperties',
+      'maxProperties',
+    ],
+  ],
+  ['array', ['items', 'prefixItems', 'additionalItems', 'minItems', 'maxItems', 'uniqueItems']],
+  ['string', ['minLength', 'maxLength', 'pattern', 'format']],
+  ['number', ['minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum', 'multipleOf']],
+]
+
+function inferTypesFromKeywords(schema: JsonSchemaObject): JsonSchemaType[] {
+  const inferred: JsonSchemaType[] = []
+  for (const [type, keywords] of TYPE_KEYWORDS) {
+    if (keywords.some((keyword) => keyword in schema)) {
+      inferred.push(type)
+    }
+  }
+  return inferred
+}
+
+function parseComposition(schema: JsonSchemaObject, context: ParserContext): ParseResult {
+  const parts: ParseResult[] = []
+
+  if (schema.allOf) parts.push(parseAllOf(schema, context))
+  if (schema.anyOf) parts.push(parseAnyOf(schema, context))
+  if (schema.oneOf) parts.push(parseOneOf(schema, context))
+  if (schema.not) parts.push(parseNot(schema, context))
+
+  // All sibling keywords also have to hold, so include them as intersect parts.
+  if (schema.const !== undefined) parts.push(parseConst(schema, context))
+  else if (schema.enum) parts.push(parseEnum(schema, context))
+  if (schema.type !== undefined || inferTypesFromKeywords(schema).length > 0) {
+    parts.push(parseSchemaType(schema, context))
+  }
+
+  let result: ParseResult
+  const [firstPart] = parts
+  if (parts.length === 1 && firstPart) {
+    result = firstPart
+  } else {
+    const imports = new Set<string>(['intersect'])
+    const types: string[] = []
+    for (const part of parts) {
+      part.imports.forEach((imp) => imports.add(imp))
+      if (part.types) types.push(part.types)
+    }
+    result = {
+      schema: `v.intersect([${parts.map((part) => part.schema).join(', ')}])`,
+      imports,
+      types: types.length > 0 ? types.join(' & ') : undefined,
+    }
+  }
+
+  // A sibling `nullable` applies to the whole combined schema.
+  if (schema.nullable === true) {
+    return {
+      schema: `v.nullable(${result.schema})`,
+      imports: new Set([...result.imports, 'nullable']),
+      types: result.types ? `${result.types} | null` : undefined,
+    }
+  }
+  return result
+}
+
 function parseSchemaType(schema: JsonSchemaObject, context: ParserContext): ParseResult {
-  const type = schema.type
+  let type = schema.type
+
+  // When `type` is omitted, infer it from type-specific keywords so the
+  // relevant constraints are still emitted instead of falling back to v.any().
+  if (type === undefined) {
+    const inferred = inferTypesFromKeywords(schema)
+    if (inferred.length === 1) {
+      type = inferred[0]
+    } else if (inferred.length > 1) {
+      type = inferred
+    }
+  }
 
   if (Array.isArray(type)) {
     // Multiple types - create a union

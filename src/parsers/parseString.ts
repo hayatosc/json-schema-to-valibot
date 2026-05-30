@@ -17,7 +17,9 @@ export function parseString(schema: JsonSchemaObject, _context: ParserContext): 
 
   // Add pattern constraint
   if (schema.pattern) {
-    constraints.push(`v.regex(/${schema.pattern}/)`)
+    // JSON Schema patterns follow ECMA-262 semantics; the `u` flag is required
+    // for Unicode property escapes (e.g. \p{Letter}) and is otherwise harmless.
+    constraints.push(`v.regex(/${schema.pattern}/u)`)
     imports.add('regex')
   }
 

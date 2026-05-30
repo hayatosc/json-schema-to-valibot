@@ -74,6 +74,15 @@ When JSON Schema and Valibot specifications conflict, prioritize clean Valibot-i
 
 ### Recent Improvements
 
+#### Keyword-based Type Inference & Constraint Fixes
+
+- **Keyword Type Inference**: Schemas omitting `type` infer it from keywords (`properties`→object, `items`/`prefixItems`→array, `minimum`→number, `pattern`→string) instead of falling back to `v.any()`. Trade-off: JSON Schema's "ignore other instance types" semantics is intentionally not preserved.
+- **Composition Combining**: `allOf`/`anyOf`/`oneOf`/`not` plus sibling base constraints are combined with `v.intersect`.
+- **Object Fixes**: `additionalProperties` schema uses `v.objectWithRest`; record uses `v.record(v.string(), …)`; `required` keys without a property schema are enforced with `v.unknown()`.
+- **Numeric/Array/Const Fixes**: exclusive bounds use `v.gtValue`/`v.ltValue`; tuples use `v.tuple`/`v.tupleWithRest`/`v.strictTuple`; empty enum → `v.never()`; const objects → `v.strictObject`; patterns gain the `u` flag.
+- **Definition Ordering**: `$defs`/`definitions` are emitted dependency-first (topological sort) to avoid TDZ errors; cycles remain handled by `v.lazy()`.
+- **Improved Test Coverage**: ~89% pass rate on official JSON Schema test suite (draft2020-12), zero ERROR-level failures.
+
 #### v0.3.0 - TypeScript Type Generation & Recursive Schemas
 
 - **Proper TypeScript Type Generation**: Generates actual TypeScript types instead of `v.GenericSchema<any>`
